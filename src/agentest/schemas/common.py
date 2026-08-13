@@ -6,12 +6,14 @@ import yaml
 from pydantic import BaseModel, ConfigDict
 
 SAFE_ID_PATTERN = r"^[A-Za-z0-9._-]+$"
+
+
 class AssetModel(BaseModel):
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
 
 
 def validate_asset_id(value: str) -> str:
-    if not value or fullmatch(SAFE_ID_PATTERN, value) is None:
+    if not value or value in {".", ".."} or fullmatch(SAFE_ID_PATTERN, value) is None:
         raise ValueError("must be a non-empty directory-safe ID matching ^[A-Za-z0-9._-]+$")
     return value
 

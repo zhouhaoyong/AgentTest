@@ -1,19 +1,14 @@
 [project]
 name = "agentest"
 version = "0.1.0"
-description = "A lightweight, file-based testing scaffold for AI agents."
+description = "A lightweight, file-based testing workspace for AI agents."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "playwright>=1.48",
     "pydantic>=2.0",
     "pyyaml>=6.0",
-    "typer>=0.12",
 ]
-
-[project.scripts]
-agentest = "agentest.cli:app"
-AgentTest = "agentest.cli:app"
 
 [dependency-groups]
 dev = [

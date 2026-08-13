@@ -1,0 +1,6 @@
+id: version-name
+name: 版本名称
+test_url: ""
+description: ""
+# 仅填写本次 Version 与 System 默认环境不同的字段；不保存账号或密码。
+test_environment: null

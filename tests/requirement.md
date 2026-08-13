@@ -2,7 +2,7 @@
 
 ## 目录职责
 
-保存 AgentTest 脚手架、Schema、浏览器配置、CLI 和架构边界的自动化测试。
+保存 AgentTest Schema、浏览器配置、Prompt 目录和架构边界的自动化测试。
 
 ## 允许内容
 

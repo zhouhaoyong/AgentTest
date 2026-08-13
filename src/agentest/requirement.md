@@ -6,9 +6,7 @@
 
 ## 允许内容
 
-- `cli.py`：可选 CLI 入口。
 - `browser/`：Playwright 兜底能力。
-- `scaffold/`：安全创建资产目录。
 - `schemas/`：Pydantic 资产 Schema。
 - `__init__.py`：包元数据。
 - 本文件：目录契约。
@@ -23,7 +21,7 @@
 
 ## 禁止事项
 
-- 不添加数据库、Agent Runtime、LLM Provider 或无关应用代码。
+- 不添加额外的资产创建命令、数据库、Agent Runtime、LLM Provider 或无关应用代码。
 - 不从包代码执行 Git 操作。
 
 ## 阅读策略

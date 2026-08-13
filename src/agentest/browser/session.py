@@ -1,12 +1,20 @@
 from typing import Any
 
+from agentest.schemas.system import TestEnvironment
+
 
 class BrowserSession:
     """Small lifecycle helper that leaves Playwright Page APIs untouched."""
 
-    def __init__(self, headless: bool = False, slow_mo: int = 0) -> None:
+    def __init__(
+        self,
+        headless: bool = False,
+        slow_mo: int = 0,
+        test_environment: TestEnvironment | None = None,
+    ) -> None:
         self.headless = headless
         self.slow_mo = slow_mo
+        self.test_environment = test_environment or TestEnvironment()
         self._playwright: Any = None
         self._browser: Any = None
         self._context: Any = None
@@ -21,7 +29,20 @@ class BrowserSession:
             headless=self.headless,
             slow_mo=self.slow_mo,
         )
-        self._context = self._browser.new_context()
+        environment = self.test_environment
+        self._context = self._browser.new_context(
+            viewport={
+                "width": environment.viewport.width,
+                "height": environment.viewport.height,
+            },
+            device_scale_factor=environment.device_scale_factor,
+            is_mobile=environment.is_mobile,
+            has_touch=environment.has_touch,
+            locale=environment.locale,
+            timezone_id=environment.timezone_id,
+        )
+        self._context.set_default_timeout(environment.action_timeout_ms)
+        self._context.set_default_navigation_timeout(environment.navigation_timeout_ms)
         return self
 
     def new_page(self) -> Any:

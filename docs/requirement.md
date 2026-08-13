@@ -2,20 +2,19 @@
 
 ## 目录职责
 
-保存 AgentTest 的架构、工作流、资产、测试规范和示例文档。
+保存 AgentTest 的架构、Demo、示例和改造设计文档。
 
 ## 允许内容
 
 - `architecture.md`：系统边界和资产模型。
-- `workflow.md`：Agent 工作流。
-- `asset-spec.md`：资产职责和生命周期。
-- `testing-rules.md`：正式测试规则。
-- `examples/`：仅用于说明的小型示例。
+- `demo.md`：Demo 唯一入口，包含资产树和示例文件索引。
+- `examples/`：平铺的 Demo 示例内容。
+- `superpowers/`：已确认的改造设计与实施计划。
 - 本文件：目录契约。
 
 ## 文件职责
 
-详细规范放在本目录，Agent 的强制行为放在根目录 `AGENTS.md`，产品实现边界放在根目录 `prd.md`。
+公共工作流、Prompt、模板和测试规则放在根目录 `workflow/`；Agent 的强制行为放在 `AGENTS.md`，产品实现边界放在 `prd.md`。
 
 ## 更新规则
 
@@ -29,4 +28,4 @@
 
 ## 阅读策略
 
-只阅读与当前实现或测试任务相关的文档。
+首次了解资产结构时先读 `demo.md`，再按需读取 `examples/` 下的示例文件；其他任务只阅读与当前实现或测试任务相关的文档。

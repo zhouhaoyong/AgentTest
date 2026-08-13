@@ -1,0 +1,17 @@
+id: demo-web
+name: 示例 Web 系统
+type: web
+base_url: ""
+description: 仅用于说明 System 结构
+test_environment:
+  viewport:
+    width: 1280
+    height: 720
+  device_scale_factor: 1
+  is_mobile: false
+  has_touch: false
+  locale: zh-CN
+  timezone_id: Asia/Shanghai
+  action_timeout_ms: 5000
+  navigation_timeout_ms: 30000
+  login: manual
