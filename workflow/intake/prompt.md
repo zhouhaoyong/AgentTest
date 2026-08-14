@@ -20,6 +20,8 @@
 3. 按 `requirements/prompt.md` 进行探索决策：复用已有知识时直接进入 `test-points/`；目标探索或必须探索时先进入 `exploration/`。
 4. 生成当前 Version 或联动范围的测试点后停止，等待用户明确授权。
 
+上下文确认首轮只收集项目、系统、版本、地址和需求来源等最小信息。用户提供业务可读名称即可，内部 ID 由 Agent 生成并展示确认；角色、权限、测试账号和具体测试数据只有在需求整理阶段判断确有必要时才后置询问。
+
 ## 允许写入的位置
 
 - 仅由被调度阶段写入其允许的真实资产位置：`.agentest/` 或 `projects/<project>/systems/<system>/versions/<version>/`。

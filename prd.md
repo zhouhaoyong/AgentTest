@@ -121,6 +121,7 @@ Project
 - System ID 在 Project 内唯一，Version ID 在 System 内唯一。
 - Version 是测试资产目录，不是 Git 分支。
 - Project、System、Version ID 必须匹配 `^[A-Za-z0-9._-]+$`。
+- `name` 是面向用户的业务名称，`id` 是目录安全的内部关联标识；首轮由用户提供业务可读名称，Agent 根据名称生成 ID 并展示映射确认，不要求用户自行提供英文 ID。
 
 ### 4.2 Project
 
@@ -210,13 +211,15 @@ versions/<version-name>/
 
 Agent 首先读取最近的 `requirement.md`、`AGENTS.md`、`prd.md`、Demo 总览，以及 `.agentest/context.yaml` 和 `.agentest/state.yaml`（如果存在）。
 
-必须确认：
+首轮必须确认：
 
-- Project 名称。
-- System 名称、系统类型和 System ID；多个 System 一起测试时，确认参与系统、对应 Version、地址和操作顺序。
-- Version 名称；已有 System 不得重建，通常创建新 Version 并按用户要求升版本号。
+- Project 中文名称。
+- System 名称和系统类型；多个 System 一起测试时，确认参与系统、对应 Version、地址和操作顺序。
+- Version 名称或版本号；已有 System 不得重建，通常创建新 Version 并按用户要求升版本号。
 - 测试地址。
 - 原始需求来源。
+
+Agent 根据业务名称生成 Project、System、Version 的内部 ID，并展示映射供用户确认。角色、权限、测试账号和具体测试数据只有在需求整理阶段判断确有必要时才确认，不属于所有项目的首轮必答项。
 
 如果用户只提供原始需求，Agent 必须反问缺失的关键上下文，不得自行编造。用户可以直接修改 YAML；Agent 下一次工作以文件内容为准。
 

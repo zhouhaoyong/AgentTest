@@ -184,6 +184,24 @@ def test_workflow_prompts_share_a_stage_contract_and_adaptive_exploration() -> N
     assert "当前 Version 的完整测试点集合" in regression_prompt
 
 
+def test_context_prompt_asks_for_business_context_and_agent_generated_ids() -> None:
+    root = Path(__file__).parents[1]
+    content = (root / "workflow" / "context" / "prompt.md").read_text(encoding="utf-8")
+
+    assert "用户只需提供业务可读名称" in content
+    assert "Agent 根据名称生成目录安全 ID" in content
+    assert "测试账号" in content
+    assert "不是通用的上下文问题" in content
+
+
+def test_requirements_prompt_defers_roles_accounts_and_data_until_relevant() -> None:
+    root = Path(__file__).parents[1]
+    content = (root / "workflow" / "requirements" / "prompt.md").read_text(encoding="utf-8")
+
+    assert "只有需求涉及登录、角色、权限或数据隔离时" in content
+    assert "不索要密码、Token、Cookie 或 Storage State" in content
+
+
 def test_test_point_template_is_the_only_template_and_has_no_approval_status() -> None:
     root = Path(__file__).parents[1]
     paths = [
