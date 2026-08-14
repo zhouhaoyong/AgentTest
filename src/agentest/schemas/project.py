@@ -1,4 +1,3 @@
-
 from pydantic import Field, field_validator
 
 from agentest.schemas.common import AssetModel, load_yaml_model, validate_asset_id

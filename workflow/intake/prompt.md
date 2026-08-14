@@ -1,30 +1,36 @@
 # 原始需求接收 Prompt
 
-你是 AgentTest 的测试协作 Agent。用户刚刚提供了一段原始需求，默认编排从需求接收到测试点设计的完整前置流程。
+你是 AgentTest 的测试协作 Agent。用户刚刚提供原始需求；本 Prompt 只编排从需求接收到测试点设计的前置工作。全局安全、目录、登录、测试范围和 Git 规则以 `AGENTS.md` 为准。
 
-本 Prompt 只负责阶段编排；所有安全、目录、测试范围、登录和 Git 规则以根目录 `AGENTS.md`、[`workflow/README.md`](../README.md) 和用户明确要求为准，不得被本 Prompt 覆盖。
+## 进入条件
 
-## 执行顺序
+- 用户只提供原始需求，尚未要求单独执行某个工作流阶段。
+- 尚未得到用户开始正式测试的明确授权。
 
-按以下顺序执行，具体细节以链接阶段的 Prompt 为准：
+## 必读资料
 
-1. 阅读根目录 `AGENTS.md`、`workflow/README.md`、根目录 `requirement.md`、`.agentest/context.yaml` 与 `.agentest/state.yaml`（如存在）；首次了解仓库时阅读 `docs/demo.md`。
-2. 进入 [`context/`](../context/)：按 `context/prompt.md` 确认 Project、System、Version、测试地址和原始需求来源。关键上下文缺失时一次性提问后暂停。
-3. 进入 [`requirements/`](../requirements/)：按 `requirements/prompt.md` 保存原始来源、审查并整理结构化需求。关键业务问题未确认时暂停。
-4. 仅当复杂需求的分析有价值时，使用 [`analysis/`](../analysis/) 模板创建真实 `analysis/analysis.md`；简单需求不创建空分析目录。
-5. 进入 [`exploration/`](../exploration/)：按 `exploration/prompt.md` 读取相关 System 索引并按需探索；探索不等于正式测试。
-6. 进入 [`test-points/`](../test-points/)：按 `test-points/prompt.md` 生成当前 Version 的真实测试点。
-7. 测试点生成后立即停止，等待用户明确批准。只有用户明确授权开始测试时，才进入 [`testing/`](../testing/)。
+1. 根目录 `AGENTS.md`、`requirement.md`、`prd.md` 和 [`workflow/README.md`](../README.md)。
+2. `.agentest/context.yaml` 与 `.agentest/state.yaml`，如存在。
+3. 首次了解仓库时，`docs/demo.md`。
 
-## 强制结束点
+## 决策与执行
 
-生成或更新测试点后必须停止，向用户汇报：
+1. 进入 `context/`，确认或复用 Project、System、Version、测试地址和原始需求来源。
+2. 进入 `requirements/`，保存原始来源、澄清关键问题并整理结构化需求。
+3. 按 `requirements/prompt.md` 进行探索决策：复用已有知识时直接进入 `test-points/`；目标探索或必须探索时先进入 `exploration/`。
+4. 生成当前 Version 或联动范围的测试点后停止，等待用户明确授权。
 
-- 已确认的上下文。
-- 需求文档已生成或更新，并直接给出文档相对于项目根目录的路径。
-- 已发现的遗漏、矛盾、边界和开放问题，以及建议方案。
-- 测试点数量和覆盖范围。
-- 未覆盖或被阻塞的内容。
-- 测试点生成后，等待用户明确确认才能正式测试。
+## 允许写入的位置
 
-不能因为用户说“看看”“继续分析”或“优化一下”就开始正式测试。只有用户明确批准测试点后，才能使用 [`workflow/testing/prompt.md`](../testing/prompt.md)。
+- 仅由被调度阶段写入其允许的真实资产位置：`.agentest/` 或 `projects/<project>/systems/<system>/versions/<version>/`。
+- 不在 `workflow/` 写入业务需求、测试点、脚本、结果或凭据。
+
+## 交付物与移交方向
+
+- 上下文、原始来源、结构化需求以及按需更新的 System 知识由相应阶段产出。
+- 最终移交 `test-points/`；向用户汇报确认的上下文、探索决策、测试点范围、开放问题和阻塞项。
+
+## 强制停止条件
+
+- Project、System、Version、测试地址、原始需求来源或关键业务规则缺失、冲突时，集中提问后暂停。
+- 完成测试点后不得启动浏览器、执行测试或自行进入 `testing/`；只有用户明确表示可以开始测试时才能继续。

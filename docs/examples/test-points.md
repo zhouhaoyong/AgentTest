@@ -2,9 +2,12 @@
 
 > 本文件是 `docs/examples/` 下的平铺示例，不是实际业务项目生成的文件。真实资产路径为 `projects/<project-name>/systems/<system-name>/versions/<version-name>/test-points/test-points.md`。
 
-状态：Draft
-
 ## 1. 测试范围
+
+### 探索决策
+
+- 策略：目标探索
+- 依据：Demo System 尚未沉淀联系人新增相关的 Element Map 与 Memory，需要只探索联系人列表与新增入口。
 
 ### 已覆盖
 
@@ -29,7 +32,6 @@
 - 优先级：P0
 - 测试维度：功能测试
 - 关联需求：添加联系人 > 需求说明 > 联系人姓名
-- 状态：Draft
 
 #### 前置条件
 
@@ -52,7 +54,6 @@
 - 优先级：P0
 - 测试维度：业务流程测试
 - 关联需求：添加联系人 > 需求说明
-- 状态：Draft
 
 #### 测试步骤
 

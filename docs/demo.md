@@ -23,7 +23,6 @@ Project
     └── Version
         ├── Requirement Source
         ├── Requirement
-        ├── Analysis
         ├── Test Points
         ├── Test Scripts
         └── Test Report
@@ -46,7 +45,6 @@ docs/
     ├── source.md                   # 原始需求来源示例
     ├── requirement.md              # examples 目录契约
     ├── 20260814_V2026.08.04_demo-web.md # 结构化需求示例
-    ├── analysis.md                 # 需求分析示例
     ├── test-points.md              # 测试点平铺示例；真实位置见 Version/test-points/test-points.md
     ├── test-script.py              # 可重复执行的测试脚本示例
     └── report.md                   # 测试报告（建议版）示例
@@ -75,7 +73,6 @@ docs/
 - [examples 目录契约](examples/requirement.md)
 - [原始需求来源](examples/source.md)
 - [结构化需求](examples/20260814_V2026.08.04_demo-web.md)
-- [需求分析](examples/analysis.md)
 - [测试点](examples/test-points.md)
 - [测试脚本](examples/test-script.py)
 - [测试报告（建议版）](examples/report.md)

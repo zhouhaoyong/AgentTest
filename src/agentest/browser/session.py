@@ -55,15 +55,21 @@ class BrowserSession:
         return page
 
     def close(self) -> None:
-        if self._context is not None:
-            self._context.close()
-        if self._browser is not None:
-            self._browser.close()
-        if self._playwright is not None:
-            self._playwright.stop()
-        self._context = None
-        self._browser = None
-        self._playwright = None
+        try:
+            if self._context is not None:
+                self._context.close()
+        finally:
+            try:
+                if self._browser is not None:
+                    self._browser.close()
+            finally:
+                try:
+                    if self._playwright is not None:
+                        self._playwright.stop()
+                finally:
+                    self._context = None
+                    self._browser = None
+                    self._playwright = None
 
     def __enter__(self) -> "BrowserSession":
         return self.start()

@@ -7,7 +7,7 @@ AgentTest 是面向现成 AI Agent 的轻量文件化 Web 测试工作区。它�
 用户可以在 Codex、Claude Desktop、Claude Code CLI、Hermes Agent、Reasonix 或其他能读写本地文件的 Agent 中直接输入需求。Agent 负责需求整理、系统探索、测试点设计、人工审核、浏览器测试和资产沉淀。
 
 ```text
-原始需求 → 确认上下文 → 需求审查与用户澄清 → 需求整理 → 系统探索 → 测试点
+原始需求 → 确认上下文 → 需求审查与用户澄清 → 需求整理 → 探索决策与按需系统探索 → 测试点
 → 人工审核 → 正式测试 → 脚本 / 建议版报告 → 回归测试
 → 更新 Element Map / Memory
 ```
@@ -30,7 +30,7 @@ AgentTest 是面向现成 AI Agent 的轻量文件化 Web 测试工作区。它�
 - `workflow/` 公共脚手架：按用户流程聚合的 Prompt、模板、目录契约、规则和资产映射。
 - Markdown / YAML 模板、目录契约、README、工作流和测试规则。
 - `.agentest/context.yaml` 与 `.agentest/state.yaml` 的跨 Agent 状态约定，由 Agent 直接读写。
-- 每个 Version 的 `test-scripts/` 和统一的 `report/report.md`。
+- 每个 Version 的 `test-scripts/` 和统一的 `report/report.md`；多个 System 一起测试时，使用 Project 下可选的联动范围目录保存同类资产。
 - 一个平铺、可发现的 Demo：`docs/demo.md` 链接 `docs/examples/` 下的示例文件。
 - pytest、Ruff 和架构边界测试。
 
@@ -71,7 +71,6 @@ AgentTest/
 │   ├── intake/
 │   ├── context/
 │   ├── requirements/
-│   ├── analysis/
 │   ├── exploration/
 │   ├── test-points/
 │   ├── testing/
@@ -108,15 +107,17 @@ AgentTest/
 
 ```text
 Project
-└── System
-    ├── system.yaml
-    ├── element-map/
-    ├── memory/
-    └── versions/
-        └── Version
+├── System
+│   ├── system.yaml
+│   ├── element-map/
+│   ├── memory/
+│   └── versions/
+│       └── Version
+└── integration-scopes/（可选）
+    └── 联动范围
 ```
 
-- 一个 Project 可以包含多个 System，一个 System 可以包含多个 Version。
+- 一个 Project 可以包含多个 System，一个 System 可以包含多个 Version。多个 System 必须一起验证时，Project 可增加 `integration-scopes/<scope>/`；它只保存该次联动测试资产。
 - System ID 在 Project 内唯一，Version ID 在 System 内唯一。
 - Version 是测试资产目录，不是 Git 分支。
 - Project、System、Version ID 必须匹配 `^[A-Za-z0-9._-]+$`。
@@ -188,15 +189,20 @@ versions/<version-name>/
 ├── requirements/
 │   ├── source.md
 │   ├── requirement.md
-│   ├── YYYYMMDD_V<版本号>_<system-id>.md
+│   ├── YYYYMMDD_V<版本号>_<system-or-scope-id>.md
 │   └── attachments/requirement.md
-├── analysis/analysis.md
 ├── test-points/test-points.md
 ├── test-scripts/
 └── report/report.md
 ```
 
-`analysis` 只在复杂需求有实际价值时创建。`test-scripts/` 保存当前 Version 内可重复执行的测试脚本，已确认需求发生变化时应及时调整相关脚本；`report/report.md` 统一保存最近一次正式测试或回归测试的建议版报告，包含测试点结果、Bug、风险、未测试内容和测试建议。
+`test-scripts/` 保存当前 Version 或联动范围内可重复执行的测试脚本，已确认需求发生变化时应及时调整相关脚本；`report/report.md` 统一保存最近一次正式测试或回归测试的建议版报告，包含测试点结果、Bug、风险、未测试内容和测试建议。
+
+### 4.6 联动范围
+
+路径：`projects/<project-name>/integration-scopes/<scope-name>/scope.yaml`。
+
+联动范围只在一个需求需要多个 System 一起验证时创建。`scope.yaml` 按操作顺序列出参与的 System、Version 和已确认测试地址；该目录使用与 Version 相同的 `requirements/`、`test-points/`、`test-scripts/`、`report/` 结构。长期 Element Map 和 Memory 继续保留在各自 System 下。
 
 ## 5. Agent 工作流
 
@@ -207,7 +213,7 @@ Agent 首先读取最近的 `requirement.md`、`AGENTS.md`、`prd.md`、Demo 总
 必须确认：
 
 - Project 名称。
-- System 名称、系统类型和 System ID。
+- System 名称、系统类型和 System ID；多个 System 一起测试时，确认参与系统、对应 Version、地址和操作顺序。
 - Version 名称；已有 System 不得重建，通常创建新 Version 并按用户要求升版本号。
 - 测试地址。
 - 原始需求来源。
@@ -216,9 +222,9 @@ Agent 首先读取最近的 `requirement.md`、`AGENTS.md`、`prd.md`、Demo 总
 
 ### 5.2 整理需求与探索
 
-先保存或登记 `requirements/source.md`，再审查需求的遗漏、矛盾、边界和可测试性；需要时向用户提出问题并给出建议方案。用户澄清后，生成 `requirements/YYYYMMDD_V<版本号>_<system-id>.md`；`requirements/requirement.md` 只作为目录契约。复杂需求才创建 `analysis/analysis.md`。
+先保存或登记 `requirements/source.md`，再审查需求的遗漏、矛盾、边界和可测试性；需要时向用户提出问题并给出建议方案。用户澄清后，生成 `requirements/YYYYMMDD_V<版本号>_<system-or-scope-id>.md`；`requirements/requirement.md` 只作为目录契约。统计、指标或汇总需求还要确认口径、时间范围、筛选条件和可参考的数据来源。
 
-系统探索用于理解页面、业务路径、模块和关键元素，不等于正式测试。业务期望与当前页面实现必须分开记录；页面没有对应按钮不代表需求无效，页面存在功能也不代表它自动属于本次需求。Agent 可以按需更新 System 级 Element Map / Memory，但只记录长期可复用的信息。
+系统探索用于理解页面、业务路径、模块和关键元素，不等于正式测试。需求整理后，Agent 先依据当前需求与 System Memory / Element Map 的覆盖度，选择复用已有知识、目标探索或必须探索；仅在需要时启动浏览器探索。业务期望与当前页面实现必须分开记录；页面没有对应按钮不代表需求无效，页面存在功能也不代表它自动属于本次需求。Agent 可以按需更新 System 级 Element Map / Memory，但只记录长期可复用的信息。
 
 正式测试结束后，继续在同一份结构化需求文档中补充“测试后的实现说明”，但不得覆盖原始需求或未经用户确认改变业务目标或需求范围。
 
@@ -226,7 +232,7 @@ Agent 首先读取最近的 `requirement.md`、`AGENTS.md`、`prd.md`、Demo 总
 
 ### 5.3 测试点确认规则
 
-Agent 在当前 Version 的 `test-points/test-points.md` 生成测试点后必须停止。真实业务资产路径是 `projects/<project-name>/systems/<system-name>/versions/<version-name>/test-points/test-points.md`，不得在项目根目录直接创建 `test-points/`。只有用户明确表示“测试点确认”“可以开始测试”“按照这些测试点执行”等含义，才能继续。
+Agent 在当前 Version 或联动范围的 `test-points/test-points.md` 生成测试点后必须停止。真实业务资产路径是 `projects/<project-name>/systems/<system-name>/versions/<version-name>/test-points/test-points.md`，或 `projects/<project-name>/integration-scopes/<scope-name>/test-points/test-points.md`；不得在项目根目录直接创建 `test-points/`。只有用户明确表示“测试点确认”“可以开始测试”“按照这些测试点执行”等含义，才能继续。
 
 测试点应根据需求评估：
 
@@ -238,14 +244,14 @@ Agent 在当前 Version 的 `test-points/test-points.md` 生成测试点后必�
 
 ### 5.4 正式测试与回归
 
-正式测试只执行已批准的 Test Points，不自动扩大范围。每个测试点记录 `PASS`、`FAIL`、`BLOCKED` 或 `NOT RUN`。
+正式测试只执行已批准的 Test Points，不自动扩大范围。多个 System 时按测试点顺序操作并核对最终结果；数据有延迟时等待可观察结果和写明的最长时间。点击后判断当前页变化、新页面、外部页面或下载，再继续操作。统计、指标或汇总需求在相同口径、时间范围和筛选条件下与参考数据比较；没有参考数据时记录 `BLOCKED`。每个测试点记录 `PASS`、`FAIL`、`BLOCKED` 或 `NOT RUN`。
 
-遇到登录页时，Agent 必须暂停并提示用户手动输入账号密码。用户明确确认登录完成后才能继续。不同账号或角色必须使用隔离的 Browser Context / Session。
+遇到登录页时，Agent 必须暂停并提示用户手动输入账号密码。用户明确确认登录完成后才能继续。不同账号或角色必须使用独立浏览器会话。
 
 测试结束后：
 
 1. 复用或补充当前 Version 的 `test-scripts/`。
-2. 更新唯一的 `report/report.md`，包含本次范围、脚本、测试点结果、结果汇总、Bug、回归、未测试内容、风险和测试建议；结果汇总只统计本次执行，回归结果与历史结果分开记录。
+2. 更新唯一的 `report/report.md`，包含本次范围、脚本、测试点结果、结果汇总、Bug、回归、未测试内容、风险和测试建议；Bug 修复后的回归重新执行当前 Version 或联动范围最终测试点集合，结果汇总只统计本次执行，回归结果与历史结果分开记录。
 3. 只有长期可复用的知识才更新 System 级 `element-map/` 和 `memory/`。
 4. 向用户汇报结果，不执行 Git 操作。
 

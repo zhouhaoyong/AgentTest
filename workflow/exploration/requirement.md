@@ -2,7 +2,7 @@
 
 ## 目录职责
 
-保存系统探索、Element Map 和 Memory 沉淀的公共 Prompt 与模板。
+保存按需系统探索、Element Map 和 Memory 沉淀的公共 Prompt 与模板。
 
 ## 允许内容
 
@@ -17,4 +17,4 @@
 
 ## 阅读策略
 
-先读取真实 System 的 `element-map/index.md` 和 `memory/index.md`，仅加载相关模块后再探索。
+需求整理后先读取真实 System 的 `element-map/index.md` 和 `memory/index.md`，判断复用已有知识、目标探索或必须探索；仅在后两种结果下加载相关模块并启动探索。

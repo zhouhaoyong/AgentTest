@@ -8,7 +8,6 @@
 
 - `version.yaml`：Version 元数据、可选测试地址和可选 Playwright 环境覆盖。
 - `requirements/`：原始来源、目录契约和按规范命名的结构化需求文档。
-- `analysis/`：可选需求分析。
 - `test-points/`：等待审核或已经审核的测试点。
 - `test-scripts/`：可重复执行的测试脚本。
 - `report/`：最近一次正式测试或回归测试的建议版报告。
@@ -20,7 +19,7 @@
 
 ## 更新规则
 
-先整理需求，再探索和生成测试点。生成测试点后必须等待用户明确批准；正式测试后才能更新测试脚本和 Report。
+先整理需求，再根据探索决策按需探索并生成测试点。生成测试点后必须等待用户明确批准；正式测试后才能更新测试脚本和 Report。
 
 ## 禁止事项
 
@@ -31,4 +30,4 @@
 
 ## 阅读策略
 
-先读本契约和 `version.yaml`，再读取 `requirements/requirement.md` 目录契约、`source.md`、当前命名的结构化需求文档、相关 Analysis、Test Points、Test Scripts 和 System 索引。
+先读本契约和 `version.yaml`，再读取 `requirements/requirement.md` 目录契约、`source.md`、当前命名的结构化需求文档、Test Points、Test Scripts 和 System 索引。

@@ -37,7 +37,6 @@ workflow/
 │   ├── template-version-requirement.md
 │   └── template-workspace-requirement.md
 ├── requirements/
-├── analysis/
 ├── exploration/
 ├── test-points/
 ├── testing/
@@ -67,7 +66,7 @@ When intent conflicts with the persisted state or lacks key authorization, the A
 - Keep `intake` orchestral: it links to stage-specific instructions instead of duplicating them.
 - Add independent `context/prompt.md` and `exploration/prompt.md` to remove two implicit stages.
 - Clarify every stage's entry condition, required reads, allowed `projects/...` writes, handoff and stop condition.
-- Remove the contradiction that a simple requirement should both skip analysis and keep an empty analysis template: simple requirements do not create `analysis/`.
+- Drop the dedicated `analysis/` stage entirely: analyzing a complex requirement is the model's job during requirement organization and test-point design, not a directory or template to maintain. Requirement depth is captured in `requirements/` and reflected directly in the test points.
 - Add a minimal reusable Playwright script template tied to stable Test Point IDs.
 - Constrain report Bug status to `Open`, `Fixed Pending Regression`, `Regressed` or `Closed`.
 - Normalize `.agentest` contracts to describe `system_type` and Storage State consistently.

@@ -9,7 +9,7 @@ from agentest.browser import BrowserSession
 
 def test_tp_001_feature_name() -> None:
     """验证 TP-001：替换为清晰、可观察的测试目标。"""
-    # 仅在当前 Version 已批准的 Test Point 范围内实现稳定定位与断言。
+    # 仅在当前 Version 或联动范围已批准的 Test Point 范围内实现稳定定位与断言。
     with BrowserSession(headless=False) as browser:
         page = browser.goto("<confirmed-test-url>")
         # 使用 data-testid、语义 locator 或稳定属性；不要使用动态 class 或坐标。

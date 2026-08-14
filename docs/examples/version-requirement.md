@@ -2,4 +2,4 @@
 
 Version 表示一次明确的测试范围，包含需求、测试点、可重复执行的测试脚本和测试报告。
 
-Bug 修复后，应优先复用 `test-scripts/` 中与相关 Test Point 关联的脚本进行回归测试。
+Bug 修复后，应复用 `test-scripts/` 中相关脚本，并执行当前 Version 最终测试点集合的完整回归测试。

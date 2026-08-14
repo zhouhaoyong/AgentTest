@@ -17,6 +17,7 @@ class WorkspaceContext(AssetModel):
     system_id: str
     system_type: WorkspaceSystemType = ""
     version_id: str = ""
+    integration_scope_id: str = ""
     test_url: str = ""
 
     @field_validator("project_id", "system_id")
@@ -24,7 +25,7 @@ class WorkspaceContext(AssetModel):
     def validate_required_id(cls, value: str) -> str:
         return validate_asset_id(value)
 
-    @field_validator("version_id")
+    @field_validator("version_id", "integration_scope_id")
     @classmethod
     def validate_optional_id(cls, value: str) -> str:
         return validate_asset_id(value) if value else value
@@ -33,7 +34,14 @@ class WorkspaceContext(AssetModel):
 class WorkspaceState(AssetModel):
     phase: str = "requirement"
     context_confirmed: bool = False
-    test_points_approved: bool = False
     last_action: str = ""
     pending_questions: list[str] = Field(default_factory=list)
     browser: BrowserPreferences = Field(default_factory=BrowserPreferences)
+
+
+__all__ = [
+    "BrowserPreferences",
+    "WorkspaceContext",
+    "WorkspaceState",
+    "WorkspaceSystemType",
+]

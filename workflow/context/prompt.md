@@ -1,27 +1,34 @@
 # 上下文确认 Prompt
 
-你正在执行 AgentTest 的上下文确认阶段。目标是确认或选择真实 Project、System、Version、测试地址和原始需求来源，并只在这些事实确认后创建或更新必要资产。
+你正在确认或选择真实 Project、System、Version、测试地址和原始需求来源；必要时确认多个 System 的联动范围。
 
-## 前置阅读
+## 进入条件
+
+- 用户要求创建、选择或确认测试上下文，或原始需求流程尚未具备完整上下文。
+
+## 必读资料
 
 1. 根目录 `AGENTS.md`、`requirement.md` 和 [`workflow/README.md`](../README.md)。
-2. `.agentest/context.yaml` 与 `.agentest/state.yaml`，如果存在。
-3. 目标 `projects/` 目录和已存在的目标 Project / System / Version 目录契约与 YAML。
-4. 首次了解仓库时阅读 `docs/demo.md`。
+2. `.agentest/context.yaml` 与 `.agentest/state.yaml`，如存在。
+3. `projects/` 及目标 Project、System、Version 的目录契约与 YAML；首次了解仓库时读取 `docs/demo.md`。
 
-## 必须确认
+## 决策与执行
 
-- Project 名称和 ID。
-- System 名称、ID、类型（`web`、`h5`、`app` 或 `miniapp`）。
-- Version 名称和 ID。
-- 测试地址，以及它不是未经确认的生产环境。
-- 原始需求来源。
+1. 单系统需求：确认 Project、System、Version、测试地址和原始需求来源。多个系统一起验证时：确认每个 System、对应 Version、测试地址和操作顺序，并创建 Project 下的联动范围。
+2. 优先复用不冲突的 `.agentest/` 与既有 YAML 事实；已有 System 必须复用，不能静默覆盖。
+3. 确认每个测试地址不是未经用户确认的生产环境；System 配置保存默认环境，Version 仅保存差异字段。联动范围只列出已确认的 System、Version 和地址。
 
-## 执行规则
+## 允许写入的位置
 
-1. 优先复用 `.agentest/` 和已有 YAML 中已经明确且不冲突的事实，不重复询问。
-2. 已有 System 必须先读取并复用；按用户意图选择已有 Version 或创建新的 Version，绝不静默覆盖。
-3. 缺失或冲突的关键上下文一次性列出问题后暂停，不得自行编造 Project、System、Version、地址、角色或权限。
-4. 新建资产时只使用本目录相邻的 `template-*`；生成后的真实文件只写入 `projects/...` 和 `.agentest/...`。
-5. `system.yaml` 的测试环境是 System 默认配置；`version.yaml` 只记录本次差异字段。不得保存凭据。
-6. 上下文确认后更新 `.agentest/context.yaml` 与 `.agentest/state.yaml` 的最小必要字段，再移交 `requirements/`；若用户只要求上下文管理，在此阶段结束。
+- 新建或更新的业务上下文只能写入 `projects/...` 标准目录；联动范围写入 `projects/<project>/integration-scopes/<scope>/`。
+- 跨 Agent 接续所需的最小上下文只能写入 `.agentest/context.yaml` 与 `.agentest/state.yaml`。
+
+## 交付物与移交方向
+
+- 上下文确认后更新最小必要状态并移交 `requirements/`。
+- 如果用户只要求管理上下文，向用户说明已确认或待确认的信息后结束。
+
+## 强制停止条件
+
+- 缺失或冲突的关键上下文一次性列出后暂停；不得编造 Project、System、Version、联动范围、地址、角色或权限。
+- 不保存凭据，不执行正式测试。

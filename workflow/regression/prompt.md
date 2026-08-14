@@ -1,34 +1,37 @@
 # 回归测试 Prompt
 
-你正在执行 AgentTest 的 Bug 修复后回归测试阶段。
+你正在执行 Bug 修复后的当前 Version 或联动范围全量回归测试。
 
-## 前置阅读
+## 进入条件
 
-先阅读：
+- 用户确认相关 Bug 已修复，并明确要求回归当前 Version 或联动范围。
+- 测试地址、环境和当前范围的完整测试点文件可用。
 
-1. 根目录 `AGENTS.md`。
-2. 当前 Version 的 `version.yaml`、`test-scripts/`、`report/requirement.md` 和当前 System 的 `system.yaml`。
-3. 相关 Bug 的历史记录和最近一次 `report/report.md`。
-4. 关联的 Test Point 和已有测试脚本。
-5. 必要的 System Memory、Element Map 和测试环境配置。
+## 必读资料
 
-## 执行要求
+1. 根目录 `AGENTS.md`、当前 Version 或联动范围的配置、`test-scripts/`、`report/requirement.md` 和相关 System 的配置。
+2. 相关 Bug 历史、最近一次 `report/report.md`。
+3. 当前范围最终的完整 `test-points/test-points.md`、相关脚本、Memory、Element Map 和环境配置。
 
-1. 先确认 Bug 已修复、测试地址和环境未变更，且回归范围得到用户确认。
-2. 优先复用当前 Version 中与 Bug 关联的已有测试脚本；脚本至少应支持当前 Version 内的重复测试。
-3. 至少回归原失败场景，并覆盖修复可能影响的直接相关场景。
-4. 不自动扩大到无关功能；需要扩大范围时先询问用户。
-5. 每个回归测试点记录 `PASS`、`FAIL`、`BLOCKED` 或 `NOT RUN`。
-6. 因登录、浏览器、网络或其他环境问题无法判断业务结果时，记录为 `BLOCKED` 或 `NOT RUN`，不能直接判定为 Bug。
-7. 如果需要登录，必须暂停并由用户手动登录后明确确认。
-8. 不保存或输出任何账号密码、Token、Cookie、Storage State、验证码或其他敏感信息；普通业务数据的截图和日志可以保留原始状态。
+## 决策与执行
 
-## 测试结束
+1. 重新执行当前 Version 的完整测试点集合，而非只执行原失败场景或推测的直接相关场景。
+2. 原 Bug 关联的 Test Point 必须存在于当前集合；若不存在，暂停并要求用户先更新测试点。
+3. 优先复用现有测试脚本；每个测试点记录 `PASS`、`FAIL`、`BLOCKED` 或 `NOT RUN`。环境异常不能直接判定为 Bug。
+4. 单系统时仅在当前 Version 范围内回归；联动范围只执行 `scope.yaml` 列出的 System 和 Version。不自动扩大到其他 Version、System 或联动范围。
 
-使用 [`workflow/reporting/prompt.md`](../reporting/prompt.md) 更新同一个 `report/report.md`：
+## 允许写入的位置
 
-- 本次回归结果单独统计，不与历史正式测试结果混合。
-- 回归记录中关联 Bug、Test Point、脚本、历史结果、本次结果和执行时间。
-- 如果回归失败，保留 Bug 的历史失败状态并记录新的实际结果。
-- 如果回归通过，记录验证依据，但不要删除历史 Bug 或原始失败信息。
-- 如果需求已经确认变更，及时同步调整当前 Version 的相关测试脚本，并在报告中说明。
+- 当前 Version 或联动范围的可重复测试脚本和唯一 `report/report.md`。
+- 仅当长期有效且经过验证时，更新对应 System 的 Memory 或 Element Map。
+- 不删除历史 Bug、历史失败信息或旧报告证据。
+
+## 交付物与移交方向
+
+- 报告单独统计本次当前范围全量回归，保留历史结果作比较，并记录 Bug、脚本与执行时间。
+- 向用户汇报完整集合的结果分布、仍失败的 Bug、阻塞项和风险。
+
+## 强制停止条件
+
+- 遇到登录立即暂停，由用户手动完成并明确确认。
+- 测试完成后不得进行当前范围外的回归，除非用户另行明确要求。

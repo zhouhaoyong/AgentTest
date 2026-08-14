@@ -17,4 +17,4 @@
 
 ## 阅读策略
 
-生成测试点前读取 `prompt.md`、当前 Version 需求和相关 System 索引。
+生成测试点前读取 `prompt.md`、当前 Version 或联动范围需求和相关 System 索引。

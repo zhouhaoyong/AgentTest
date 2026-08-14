@@ -2,12 +2,12 @@
 
 ## 目录职责
 
-保存确认测试上下文和创建 Project / System / Version 基础资产的公共脚手架。
+保存确认测试上下文和创建 Project / System / Version 基础资产的公共脚手架；多个系统一起测试时也提供联动范围模板。
 
 ## 允许内容
 
 - `prompt.md`：上下文确认与资产选择规则。
-- `template-*`：Project、System、Version、工作状态和目录契约模板。
+- `template-*`：Project、System、Version、联动范围、工作状态和目录契约模板。
 - 本文件：目录契约。
 
 ## 禁止事项

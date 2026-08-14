@@ -6,9 +6,9 @@
 
 ## 允许内容
 
-- `context.yaml`：当前 Project、System、Version 和测试地址。
+- `context.yaml`：当前 Project、System、Version、测试地址；多个系统一起测试时也记录联动范围。
 - `context.yaml` 中的 `system_type`：当前 System 类型，取值为 `web`、`h5`、`app` 或 `miniapp`。
-- `state.yaml`：当前工作阶段、审核状态和浏览器偏好。
+- `state.yaml`：当前工作阶段和浏览器偏好。
 - 本文件：目录契约。
 
 ## 文件职责
@@ -27,4 +27,4 @@ Agent 可以在确认上下文或推进工作阶段时更新。用户可以直�
 
 ## 阅读策略
 
-开始工作时先读取 `context.yaml` 和 `state.yaml`，再按状态读取目标 Project、System 和 Version 资产。
+开始工作时先读取 `context.yaml` 和 `state.yaml`，再按状态读取目标 Project、相关 System、Version 或联动范围资产。

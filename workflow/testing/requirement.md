@@ -18,4 +18,4 @@
 
 ## 阅读策略
 
-用户明确批准测试点后读取 `prompt.md` 和 `rules.md`，再读取当前 Version 的真实资产。
+用户明确批准测试点后读取 `prompt.md` 和 `rules.md`，再读取当前 Version 或联动范围的真实资产。

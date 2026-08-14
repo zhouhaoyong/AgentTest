@@ -11,7 +11,7 @@
 
 ## 文件职责
 
-Project 下继续按照 Project → System → Version 层级保存业务测试资产。
+Project 下通常按照 Project → System → Version 层级保存业务测试资产。多个 System 必须一起验证时，在 Project 下增加 `integration-scopes/` 保存联动测试资产。
 
 ## 更新规则
 

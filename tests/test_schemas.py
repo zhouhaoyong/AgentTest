@@ -7,7 +7,7 @@ from pydantic import ValidationError
 from agentest.schemas.project import ProjectConfig, load_yaml_model
 from agentest.schemas.system import SystemConfig
 from agentest.schemas.version import VersionConfig
-from agentest.schemas.workspace import WorkspaceContext
+from agentest.schemas.workspace import WorkspaceContext, WorkspaceState
 
 
 def test_project_config_accepts_minimal_valid_data() -> None:
@@ -172,3 +172,19 @@ def test_version_environment_yaml_round_trip_preserves_only_declared_overrides(
     assert environment.viewport.height == 844
     assert environment.is_mobile is True
     assert environment.locale == "en-US"
+
+
+def test_workspace_state_does_not_persist_test_point_approval() -> None:
+    state = WorkspaceState()
+
+    assert "test_points_approved" not in state.model_dump()
+
+
+def test_workspace_context_accepts_optional_integration_scope() -> None:
+    context = WorkspaceContext(
+        project_id="store",
+        system_id="shop-web",
+        integration_scope_id="order-sync",
+    )
+
+    assert context.integration_scope_id == "order-sync"
