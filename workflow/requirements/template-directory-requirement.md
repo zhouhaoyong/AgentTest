@@ -27,7 +27,7 @@ YYYYMMDD_V<版本号>_<system-or-scope-id>.md
 
 - `YYYYMMDD` 是文档首次生成日期。
 - `<版本号>` 来自用户输入，不强制使用某一种版本号格式；文件名中的版本号需要经过安全规范化。
-- `<system-or-scope-id>` 使用已确认的 System ID 或联动范围 ID；System ID 必须保留系统类型标识。
+- `<system-or-scope-id>` 使用已确认的 System ID 或联动范围 ID（与目录名一致即可，不要求带系统类型后缀）。
 
 同一版本后续补充需求、修复 Bug 或回归测试时，继续更新同一份文档，不重新命名。
 

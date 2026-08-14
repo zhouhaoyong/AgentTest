@@ -21,6 +21,7 @@ class ViewportOverride(AssetModel):
 
 class TestEnvironmentOverride(AssetModel):
     viewport: ViewportOverride | None = None
+    maximize: bool | None = None
     device_scale_factor: float | None = Field(default=None, gt=0)
     is_mobile: bool | None = None
     has_touch: bool | None = None
@@ -32,26 +33,32 @@ class TestEnvironmentOverride(AssetModel):
 
 
 class TestEnvironment(AssetModel):
-    viewport: Viewport = Field(default_factory=lambda: Viewport(width=1280, height=720))
+    # maximize=True 时使用真实最大化窗口（--start-maximized + no_viewport），
+    # viewport 仅作为无头或无法最大化时的回退尺寸。
+    viewport: Viewport = Field(default_factory=lambda: Viewport(width=1920, height=1080))
+    maximize: bool = False
     device_scale_factor: float = Field(default=1, gt=0)
     is_mobile: bool = False
     has_touch: bool = False
     locale: str = "zh-CN"
     timezone_id: str = "Asia/Shanghai"
-    action_timeout_ms: int = Field(default=5000, ge=0)
+    action_timeout_ms: int = Field(default=10000, ge=0)
     navigation_timeout_ms: int = Field(default=30000, ge=0)
     login: Literal["manual"] = "manual"
 
     @classmethod
     def defaults_for_type(cls, system_type: SystemType) -> "TestEnvironment":
         if system_type in {"h5", "app", "miniapp"}:
+            # iPhone 14 Pro 逻辑分辨率 393x852、DSF 3、移动端触屏。
             return cls(
-                viewport=Viewport(width=390, height=844),
+                viewport=Viewport(width=393, height=852),
+                maximize=False,
                 device_scale_factor=3,
                 is_mobile=True,
                 has_touch=True,
             )
-        return cls()
+        # web 默认真实最大化，贴合真人使用并减少响应式收起。
+        return cls(maximize=True)
 
     def merged_with(self, override: TestEnvironmentOverride | None) -> "TestEnvironment":
         """Apply a sparse System or Version environment override."""
@@ -102,14 +109,8 @@ class SystemConfig(AssetModel):
     @field_validator("id")
     @classmethod
     def validate_id(cls, value: str) -> str:
+        # System ID 只需是目录安全串；系统类型由 type 字段承载，不再强制塞进 ID 后缀。
         return validate_asset_id(value)
-
-    @model_validator(mode="after")
-    def validate_type_suffix_and_environment(self) -> "SystemConfig":
-        expected_suffix = f"-{self.type}"
-        if not self.id.endswith(expected_suffix):
-            raise ValueError(f"System ID must end with the system type suffix: {expected_suffix}")
-        return self
 
 
 __all__ = [

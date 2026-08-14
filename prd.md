@@ -146,15 +146,16 @@ type: web
 base_url: https://test.example.com
 description: ""
 test_environment:
+  maximize: true          # web 默认真实最大化；viewport 仅作无头/回退尺寸
   viewport:
-    width: 1280
-    height: 720
+    width: 1920
+    height: 1080
   device_scale_factor: 1
   is_mobile: false
   has_touch: false
   locale: zh-CN
   timezone_id: Asia/Shanghai
-  action_timeout_ms: 5000
+  action_timeout_ms: 10000
   navigation_timeout_ms: 30000
   login: manual
 ```
@@ -162,8 +163,8 @@ test_environment:
 规则：
 
 - `type` 只能是 `web`、`h5`、`app`、`miniapp`。
-- System ID 必须以对应类型结尾，例如 `contact-web`、`contact-h5`、`contact-app`、`contact-miniapp`。
-- `web` 默认视口为 `1280x720`；`h5`、`app`、`miniapp` 默认使用 `390x844`、移动端标识和触摸能力。
+- System ID 只需是目录安全串（`^[A-Za-z0-9._-]+$`），系统类型由 `type` 字段承载，不强制在 ID 里带类型后缀；如需区分同业务的不同端，可自行用不同名字，例如 `gumai-pc`、`gumai-h5`。
+- `web` 默认真实最大化窗口（`--start-maximized` + `no_viewport`；`viewport` 仅作无头或回退尺寸，默认 `1920x1080`）；`h5`、`app`、`miniapp` 默认使用 `393x852`（iPhone 14 Pro）、移动端标识和触摸能力。默认操作超时为 `10000` 毫秒。浏览器统一使用 Chrome 无痕模式。
 - `base_url` 可以为空；登录方式固定为 `manual`。
 - YAML、代码和测试产物都不得保存账号、密码、Token、Cookie 或 Storage State。
 
@@ -194,16 +195,17 @@ versions/<version-name>/
 │   └── attachments/requirement.md
 ├── test-points/test-points.md
 ├── test-scripts/
+├── evidence/
 └── report/report.md
 ```
 
-`test-scripts/` 保存当前 Version 或联动范围内可重复执行的测试脚本，已确认需求发生变化时应及时调整相关脚本；`report/report.md` 统一保存最近一次正式测试或回归测试的建议版报告，包含测试点结果、Bug、风险、未测试内容和测试建议。
+`test-scripts/` 保存当前 Version 或联动范围内可重复执行的测试脚本，已确认需求发生变化时应及时调整相关脚本；`evidence/` 保存本次测试的 Bug 证据（截图、Trace、HAR、录像等），报告中的 Bug 以相对路径引用，证据不得包含凭据等敏感信息；`report/report.md` 统一保存最近一次正式测试或回归测试的建议版报告，包含测试点结果、Bug、风险、未测试内容和测试建议。
 
 ### 4.6 联动范围
 
 路径：`projects/<project-name>/integration-scopes/<scope-name>/scope.yaml`。
 
-联动范围只在一个需求需要多个 System 一起验证时创建。`scope.yaml` 按操作顺序列出参与的 System、Version 和已确认测试地址；该目录使用与 Version 相同的 `requirements/`、`test-points/`、`test-scripts/`、`report/` 结构。长期 Element Map 和 Memory 继续保留在各自 System 下。
+联动范围只在一个需求需要多个 System 一起验证时创建。`scope.yaml` 按操作顺序列出参与的 System、Version 和已确认测试地址；该目录使用与 Version 相同的 `requirements/`、`test-points/`、`test-scripts/`、`evidence/`、`report/` 结构。长期 Element Map 和 Memory 继续保留在各自 System 下。
 
 ## 5. Agent 工作流
 
@@ -269,7 +271,8 @@ Agent 在当前 Version 或联动范围的 `test-points/test-points.md` 生成�
 
 ### 6.2 常见属性
 
-- `viewport.width` / `viewport.height`：测试尺寸。
+- `maximize`：为 `true` 时使用真实最大化窗口（`--start-maximized` + `no_viewport`），此时忽略固定 `viewport`；web 默认 `true`。
+- `viewport.width` / `viewport.height`：测试尺寸；`maximize` 为 `true` 时仅作无头/回退尺寸。
 - `device_scale_factor`：设备像素比。
 - `is_mobile`：移动端浏览器行为。
 - `has_touch`：触摸能力。

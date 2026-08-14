@@ -35,19 +35,22 @@ def test_all_asset_id_consumers_reject_path_segments(invalid_id: str) -> None:
         WorkspaceContext(project_id=invalid_id, system_id="contact-web")
 
 
-def test_system_config_requires_supported_type_and_type_suffix() -> None:
+def test_system_config_applies_type_defaults() -> None:
     config = SystemConfig(id="contact-h5", name="通讯录 H5", type="h5", base_url="")
 
     assert config.type == "h5"
     assert config.base_url == ""
-    assert config.test_environment.viewport.width == 390
+    assert config.test_environment.viewport.width == 393
     assert config.test_environment.is_mobile is True
 
 
-@pytest.mark.parametrize("system_id", ["contact", "contact-web-h5"])
-def test_system_config_rejects_id_without_matching_type_suffix(system_id: str) -> None:
-    with pytest.raises(ValidationError):
-        SystemConfig(id=system_id, name="通讯录 Web", type="web")
+@pytest.mark.parametrize("system_id", ["contact", "gumai-pc", "contact-web-h5"])
+def test_system_config_does_not_require_type_suffix(system_id: str) -> None:
+    # 系统类型由 type 字段承载，System ID 只需目录安全，不再强制以类型结尾。
+    config = SystemConfig(id=system_id, name="通讯录 Web", type="web")
+
+    assert config.id == system_id
+    assert config.type == "web"
 
 
 def test_system_config_accepts_explicit_playwright_environment() -> None:
@@ -81,8 +84,8 @@ def test_mobile_system_partial_environment_preserves_mobile_defaults() -> None:
         test_environment={"locale": "en-US"},
     )
 
-    assert config.test_environment.viewport.width == 390
-    assert config.test_environment.viewport.height == 844
+    assert config.test_environment.viewport.width == 393
+    assert config.test_environment.viewport.height == 852
     assert config.test_environment.device_scale_factor == 3
     assert config.test_environment.is_mobile is True
     assert config.test_environment.has_touch is True
@@ -108,7 +111,7 @@ def test_version_config_can_override_test_environment() -> None:
 
 @pytest.mark.parametrize(
     ("viewport", "expected_width", "expected_height"),
-    [({"width": 430}, 430, 844), ({"height": 932}, 390, 932)],
+    [({"width": 430}, 430, 852), ({"height": 932}, 393, 932)],
 )
 def test_version_config_allows_partial_viewport_override(
     viewport: dict[str, int], expected_width: int, expected_height: int
@@ -169,7 +172,7 @@ def test_version_environment_yaml_round_trip_preserves_only_declared_overrides(
         "viewport": {"width": 430},
     }
     assert environment.viewport.width == 430
-    assert environment.viewport.height == 844
+    assert environment.viewport.height == 852
     assert environment.is_mobile is True
     assert environment.locale == "en-US"
 

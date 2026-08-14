@@ -37,6 +37,10 @@ class WorkspaceState(AssetModel):
     last_action: str = ""
     pending_questions: list[str] = Field(default_factory=list)
     browser: BrowserPreferences = Field(default_factory=BrowserPreferences)
+    # 已完成的测试点 ID（增量结果 / 断点续跑用）。仅记录进度，不代表授权仍有效。
+    completed_test_point_ids: list[str] = Field(default_factory=list)
+    # 上次批准时测试点集合的指纹，正式测试前用于比对是否被改动（防漂移）。
+    test_points_fingerprint: str = ""
 
 
 __all__ = [

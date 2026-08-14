@@ -4,14 +4,15 @@ type: web
 base_url: ""
 description: 仅用于说明 System 结构
 test_environment:
+  maximize: true          # web 默认真实最大化；viewport 仅作无头/回退尺寸
   viewport:
-    width: 1280
-    height: 720
+    width: 1920
+    height: 1080
   device_scale_factor: 1
   is_mobile: false
   has_touch: false
   locale: zh-CN
   timezone_id: Asia/Shanghai
-  action_timeout_ms: 5000
+  action_timeout_ms: 10000
   navigation_timeout_ms: 30000
   login: manual

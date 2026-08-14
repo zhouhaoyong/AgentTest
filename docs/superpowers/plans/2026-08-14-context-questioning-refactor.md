@@ -31,6 +31,8 @@
 ```python
 def test_context_prompt_asks_for_business_context_and_agent_generated_ids() -> None:
     content = (root / "workflow" / "context" / "prompt.md").read_text(encoding="utf-8")
+
+
 assert "用户只需提供业务可读名称" in content
 assert "Agent 根据名称生成目录安全 ID" in content
 assert "测试账号" in content

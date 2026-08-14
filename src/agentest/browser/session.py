@@ -24,23 +24,43 @@ class BrowserSession:
             return self
         from playwright.sync_api import sync_playwright
 
-        self._playwright = sync_playwright().start()
-        self._browser = self._playwright.chromium.launch(
-            headless=self.headless,
-            slow_mo=self.slow_mo,
-        )
         environment = self.test_environment
-        self._context = self._browser.new_context(
-            viewport={
+        self._playwright = sync_playwright().start()
+
+        # 无痕（--incognito）：绝不复用用户已登录的 Chrome 会话，也避免缓存引入的 bug。
+        # web 端默认真实最大化（--start-maximized + no_viewport）。
+        launch_args = ["--incognito"]
+        if environment.maximize:
+            launch_args.append("--start-maximized")
+
+        launch_kwargs: dict[str, Any] = {
+            "headless": self.headless,
+            "slow_mo": self.slow_mo,
+            "args": launch_args,
+        }
+        # 优先使用系统真实 Chrome，未安装时回退到 Playwright 自带 Chromium。
+        try:
+            self._browser = self._playwright.chromium.launch(channel="chrome", **launch_kwargs)
+        except Exception:
+            self._browser = self._playwright.chromium.launch(**launch_kwargs)
+
+        context_kwargs: dict[str, Any] = {
+            "locale": environment.locale,
+            "timezone_id": environment.timezone_id,
+        }
+        if environment.maximize:
+            # 真实最大化：不固定 viewport，实际尺寸由窗口决定，跨机器可能不同。
+            context_kwargs["no_viewport"] = True
+        else:
+            context_kwargs["viewport"] = {
                 "width": environment.viewport.width,
                 "height": environment.viewport.height,
-            },
-            device_scale_factor=environment.device_scale_factor,
-            is_mobile=environment.is_mobile,
-            has_touch=environment.has_touch,
-            locale=environment.locale,
-            timezone_id=environment.timezone_id,
-        )
+            }
+            context_kwargs["device_scale_factor"] = environment.device_scale_factor
+            context_kwargs["is_mobile"] = environment.is_mobile
+            context_kwargs["has_touch"] = environment.has_touch
+
+        self._context = self._browser.new_context(**context_kwargs)
         self._context.set_default_timeout(environment.action_timeout_ms)
         self._context.set_default_navigation_timeout(environment.navigation_timeout_ms)
         return self

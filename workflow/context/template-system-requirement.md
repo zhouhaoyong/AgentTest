@@ -25,7 +25,7 @@
 
 - 不把完整 Element Map 或 Memory 复制到 Version。
 - 不保存密码或凭据。
-- System ID 必须以系统类型结尾，例如 `gumai-web`、`gumai-h5`、`gumai-app` 或 `gumai-miniapp`。
+- 不强制 System ID 带系统类型后缀；类型由 `type` 字段承载，ID 只需目录安全串（区分不同端可自行用不同名字，如 `gumai-pc`、`gumai-h5`）。
 - 登录方式固定为 `manual`；不在 YAML 中保存账号、密码、Token、Cookie 或 Storage State。
 - 不把 System 或 Version 当成 Git 分支。
 

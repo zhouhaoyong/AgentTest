@@ -16,4 +16,4 @@
 | 正式测试 | `testing/template-test-script.py` | `versions/<version>/test-scripts/<test-area>.py` 或 `integration-scopes/<scope>/test-scripts/<test-area>.py` |
 | 报告 | `reporting/template-report.md` | `versions/<version>/report/report.md` 或 `integration-scopes/<scope>/report/report.md` |
 
-单系统的 `requirements/`、`test-points/`、`test-scripts/` 与 `report/` 是 Version 级目录；联动测试时它们位于对应联动范围。Element Map 和 Memory 始终是 System 级目录。不得把真实资产写入 `workflow/`，也不得在项目根目录创建测试点或报告目录。
+单系统的 `requirements/`、`test-points/`、`test-scripts/`、`evidence/` 与 `report/` 是 Version 级目录；联动测试时它们位于对应联动范围。`evidence/` 保存 Bug 证据（截图 / Trace / HAR 等），无独立模板，测试时按需创建，证据不得包含凭据。Element Map 和 Memory 始终是 System 级目录。不得把真实资产写入 `workflow/`，也不得在项目根目录创建测试点或报告目录。
