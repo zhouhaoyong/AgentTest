@@ -6,3 +6,7 @@ systems:
     system_id: <system-id>
     version_id: <version-id>
     test_url: ""
+  - order: 2
+    system_id: <system-id>
+    version_id: <version-id>
+    test_url: ""

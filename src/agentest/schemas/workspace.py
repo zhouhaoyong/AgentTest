@@ -5,11 +5,21 @@ from pydantic import Field, field_validator
 from agentest.schemas.common import AssetModel, validate_asset_id
 
 WorkspaceSystemType = Literal["", "web", "h5", "app", "miniapp"]
+WorkflowPhase = Literal[
+    "intake",
+    "context",
+    "requirements",
+    "exploration",
+    "test-points",
+    "testing",
+    "reporting",
+    "regression",
+]
+BrowserSelection = Literal["auto", "agent_browser", "playwright"]
 
 
 class BrowserPreferences(AssetModel):
-    selected: str = "auto"
-    mcp_consent: str = "pending"
+    selected: BrowserSelection = "auto"
 
 
 class WorkspaceContext(AssetModel):
@@ -32,7 +42,7 @@ class WorkspaceContext(AssetModel):
 
 
 class WorkspaceState(AssetModel):
-    phase: str = "requirement"
+    phase: WorkflowPhase = "intake"
     context_confirmed: bool = False
     last_action: str = ""
     pending_questions: list[str] = Field(default_factory=list)
@@ -45,7 +55,9 @@ class WorkspaceState(AssetModel):
 
 __all__ = [
     "BrowserPreferences",
+    "BrowserSelection",
     "WorkspaceContext",
     "WorkspaceState",
+    "WorkflowPhase",
     "WorkspaceSystemType",
 ]

@@ -4,10 +4,11 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
+import agentest.schemas as schemas
 from agentest.schemas.project import ProjectConfig, load_yaml_model
 from agentest.schemas.system import SystemConfig
 from agentest.schemas.version import VersionConfig
-from agentest.schemas.workspace import WorkspaceContext, WorkspaceState
+from agentest.schemas.workspace import BrowserPreferences, WorkspaceContext, WorkspaceState
 
 
 def test_project_config_accepts_minimal_valid_data() -> None:
@@ -183,6 +184,35 @@ def test_workspace_state_does_not_persist_test_point_approval() -> None:
     assert "test_points_approved" not in state.model_dump()
 
 
+@pytest.mark.parametrize(
+    "phase",
+    [
+        "intake",
+        "context",
+        "requirements",
+        "exploration",
+        "test-points",
+        "testing",
+        "reporting",
+        "regression",
+    ],
+)
+def test_workspace_state_accepts_only_workflow_phases(phase: str) -> None:
+    assert WorkspaceState(phase=phase).phase == phase
+
+
+def test_workspace_state_rejects_unknown_phase_and_mcp_consent() -> None:
+    with pytest.raises(ValidationError):
+        WorkspaceState(phase="requirement")
+    with pytest.raises(ValidationError):
+        BrowserPreferences(mcp_consent="granted")
+
+
+def test_browser_preferences_reject_unknown_browser_selection() -> None:
+    with pytest.raises(ValidationError):
+        BrowserPreferences(selected="external-browser")
+
+
 def test_workspace_context_accepts_optional_integration_scope() -> None:
     context = WorkspaceContext(
         project_id="store",
@@ -191,3 +221,81 @@ def test_workspace_context_accepts_optional_integration_scope() -> None:
     )
 
     assert context.integration_scope_id == "order-sync"
+
+
+def test_integration_scope_accepts_ordered_systems() -> None:
+    scope = schemas.IntegrationScopeConfig(
+        id="order-sync",
+        name="订单联动",
+        systems=[
+            {"order": 1, "system_id": "shop-web", "version_id": "v1"},
+            {"order": 2, "system_id": "warehouse-web", "version_id": "v2"},
+        ],
+    )
+
+    assert [member.order for member in scope.systems] == [1, 2]
+
+
+@pytest.mark.parametrize(
+    "scope_data",
+    [
+        {
+            "id": "order-sync",
+            "name": "订单联动",
+            "systems": [{"order": 1, "system_id": "shop-web", "version_id": "v1"}],
+        },
+        {
+            "id": "order-sync",
+            "name": "订单联动",
+            "systems": [
+                {"order": 1, "system_id": "shop-web", "version_id": "v1"},
+                {"order": 1, "system_id": "warehouse-web", "version_id": "v2"},
+            ],
+        },
+        {
+            "id": "order-sync",
+            "name": "订单联动",
+            "systems": [
+                {"order": 1, "system_id": "shop/web", "version_id": "v1"},
+                {"order": 2, "system_id": "warehouse-web", "version_id": "v2"},
+            ],
+        },
+    ],
+)
+def test_integration_scope_rejects_invalid_members(scope_data: dict[str, object]) -> None:
+    with pytest.raises(ValidationError):
+        schemas.IntegrationScopeConfig(**scope_data)
+
+
+def test_integration_scope_yaml_loads_with_shared_model_loader(tmp_path: Path) -> None:
+    path = tmp_path / "scope.yaml"
+    path.write_text(
+        yaml.safe_dump(
+            {
+                "id": "order-sync",
+                "name": "订单联动",
+                "systems": [
+                    {"order": 1, "system_id": "shop-web", "version_id": "v1"},
+                    {"order": 2, "system_id": "warehouse-web", "version_id": "v2"},
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    scope = load_yaml_model(path, schemas.IntegrationScopeConfig)
+
+    assert scope.id == "order-sync"
+
+
+def test_integration_scope_template_and_contract_match_schema() -> None:
+    root = Path(__file__).parents[1]
+    template = (root / "workflow" / "context" / "template-integration-scope.yaml").read_text(
+        encoding="utf-8"
+    )
+    contract = (root / "src" / "agentest" / "schemas" / "requirement.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert template.count("system_id:") >= 2
+    assert "`integration_scope.py`" in contract

@@ -23,7 +23,7 @@ AgentTest 是面向现成 AI Agent 的轻量文件化 Web 测试工作区。它�
 
 ### 2.1 必须实现
 
-- Project / System / Version 的 Pydantic v2 YAML Schema。
+- Project / System / Version / Integration Scope 的 Pydantic v2 YAML Schema。
 - System 类型：`web`、`h5`、`app`、`miniapp`。
 - System / Version 的 Playwright 测试环境配置，包括视口、设备、语言、时区和超时。
 - Python Playwright 薄封装，作为 Agent 没有可用浏览器时的兜底能力。
@@ -41,7 +41,7 @@ AgentTest 是面向现成 AI Agent 的轻量文件化 Web 测试工作区。它�
 - 自研 Agent Runtime、LLM Provider、OpenAI / Anthropic SDK 或复杂 Memory Engine。
 - 当前版本的 RAG 和向量数据库。未来只把经过筛选的高价值资产作为派生索引；测试报告和测试脚本说明默认不自动向量化。
 - Native App / 小程序专用 Runner；`app`、`miniapp` 是系统身份分类，Playwright 兜底主要面向 Web / H5。
-- 自动填写账号密码、凭据管理、Credential Vault、Storage State 管理、自动上传文件、自动安装浏览器或自动配置 MCP。
+- 自动填写账号密码、凭据管理、Credential Vault、Storage State 管理、自动上传文件、自动安装浏览器或自动配置外部浏览器连接。
 - Git 自动创建分支、commit、push、pull、merge、rebase、reset、stash 或其他历史操作。
 - plugin system、event bus、service container、repository pattern 等复杂抽象。
 
@@ -49,7 +49,7 @@ AgentTest 是面向现成 AI Agent 的轻量文件化 Web 测试工作区。它�
 
 ### 3.1 技术栈
 
-- Python `>= 3.13`
+- Python `>= 3.11`
 - Pydantic v2
 - PyYAML
 - Playwright Python
@@ -207,6 +207,8 @@ versions/<version-name>/
 
 联动范围只在一个需求需要多个 System 一起验证时创建。`scope.yaml` 按操作顺序列出参与的 System、Version 和已确认测试地址；该目录使用与 Version 相同的 `requirements/`、`test-points/`、`test-scripts/`、`evidence/`、`report/` 结构。长期 Element Map 和 Memory 继续保留在各自 System 下。
 
+`scope.yaml` 至少列出两个参与 System；每项 `order` 为唯一正整数，`system_id` 与 `version_id` 必须是目录安全 ID。Schema 只校验该文件自身结构，不读取其他资产目录验证引用是否存在。
+
 ## 5. Agent 工作流
 
 ### 5.1 确认上下文
@@ -233,7 +235,7 @@ Agent 根据业务名称生成 Project、System、Version 的内部 ID，并展�
 
 正式测试结束后，继续在同一份结构化需求文档中补充“测试后的实现说明”，但不得覆盖原始需求或未经用户确认改变业务目标或需求范围。
 
-浏览器优先级：当前 Agent 的内置浏览器，其次 Python Playwright；Playwright MCP 只能在用户同意后作为可选增强，不是项目核心依赖。
+浏览器优先级：当前 Agent 的内置浏览器，其次 Python Playwright；其他浏览器连接能力仅作为 Agent 内部的可选增强，不要求用户理解连接方式，也不是项目核心依赖。
 
 ### 5.3 测试点确认规则
 
@@ -311,7 +313,7 @@ Memory 是 System 级长期知识，记录稳定业务规则、角色权限关�
 
 `BrowserSession` 是薄封装，只负责启动、创建页面、跳转和关闭，并把 `TestEnvironment` 映射为 Playwright Browser Context 配置。默认 `headless=False`，支持 `slow_mo` 和上下文管理器；页面对象仍使用原生 Playwright API。
 
-它不负责登录、凭据管理、保存 Cookie / Storage State、安装 Chromium 或配置 MCP。
+它不负责登录、凭据管理、保存 Cookie / Storage State、安装 Chromium 或配置外部浏览器连接。
 
 ## 9. 安全与 Git 约束
 
