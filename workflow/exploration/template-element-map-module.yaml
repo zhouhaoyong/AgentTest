@@ -1,0 +1,32 @@
+module_id: <module-id>
+title: <模块名称>
+verified_version: <version-id>
+viewport: <例如 1920x1080>
+pages:
+  - id: <page-id>
+    name: <页面名称>
+    url_pattern: <已验证的 URL pattern>
+    entry:
+      - type: url | navigation | search
+        value: <入口原文或 URL pattern>
+    states:
+      - id: default
+        description: <默认状态或必要前置>
+    elements:
+      - id: <element-id>
+        purpose: <业务用途>
+        text: <被测系统原文，可为空>
+        locator:
+          primary:
+            type: testid | role | label | css | text | xpath
+            value: <原样定位串>
+          fallback:
+            - type: <定位类型>
+              value: <原样定位串>
+        stability: <稳定性依据>
+        action: <操作和触发方式>
+        expected_state: <操作后页面、弹窗、标签页或下载变化>
+        verified_version: <version-id>
+        verified_viewport: <例如 1920x1080>
+        script_refs:
+          - <test-script-file-or-test-id>

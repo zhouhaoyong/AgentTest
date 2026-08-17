@@ -4,17 +4,17 @@
 
 AgentTest 是面向现成 AI Agent 的轻量文件化 Web 测试工作区。它本身不是 Agent，不实现 LLM、任务调度或测试管理后台。
 
-用户可以在 Codex、Claude Desktop、Claude Code CLI、Hermes Agent、Reasonix 或其他能读写本地文件的 Agent 中直接输入需求。Agent 负责需求整理、系统探索、测试点设计、人工审核、浏览器测试和资产沉淀。
+用户可以在 Codex、Claude Desktop、Claude Code CLI、Hermes Agent、Reasonix 或其他能读写本地文件的 Agent 中直接输入需求。Agent 负责需求整理、系统探索、测试用例设计、人工审核、浏览器测试和资产沉淀。
 
 ```text
-原始需求 → 确认上下文 → 需求审查与用户澄清 → 需求整理 → 探索决策与按需系统探索 → 测试点
+原始需求 → 确认上下文 → 需求审查与用户澄清 → 需求整理 → 探索决策与按需系统探索 → 测试用例
 → 人工审核 → 正式测试 → 脚本 / 建议版报告 → 回归测试
 → 更新 Element Map / Memory
 ```
 
 核心原则：
 
-- Markdown / YAML 是当前唯一事实来源。
+- Markdown / YAML 是当前唯一事实来源；Element Map 的结构化事实使用 YAML，Memory 使用固定章节的 Markdown。
 - Agent 直接按目录契约和模板读写资产，不提供额外的资产创建命令。
 - 不静默覆盖已有资产；已有 System 应复用并创建或选择新的 Version。
 - Git 分支由用户自行管理，AgentTest 不执行 Git 操作。
@@ -30,7 +30,7 @@ AgentTest 是面向现成 AI Agent 的轻量文件化 Web 测试工作区。它�
 - `workflow/` 公共脚手架：按用户流程聚合的 Prompt、模板、目录契约、规则和资产映射。
 - Markdown / YAML 模板、目录契约、README、工作流和测试规则。
 - `.agentest/context.yaml` 与 `.agentest/state.yaml` 的跨 Agent 状态约定，由 Agent 直接读写。
-- 每个 Version 的 `test-scripts/` 和统一的 `report/report.md`；多个 System 一起测试时，使用 Project 下可选的联动范围目录保存同类资产。
+- 每个 Version 的 `test-scripts/` 和统一的 `report/report.md`；正式测试后 `test-scripts/` 不能为空，并且脚本必须能在手动登录后重复运行当前范围；多个 System 一起测试时，使用 Project 下可选的联动范围目录保存同类资产。
 - 一个平铺、可发现的 Demo：`docs/demo.md` 链接 `docs/examples/` 下的示例文件。
 - pytest、Ruff 和架构边界测试。
 
@@ -72,7 +72,7 @@ AgentTest/
 │   ├── context/
 │   ├── requirements/
 │   ├── exploration/
-│   ├── test-points/
+│   ├── test-cases/
 │   ├── testing/
 │   ├── reporting/
 │   └── regression/
@@ -193,19 +193,19 @@ versions/<version-name>/
 │   ├── requirement.md
 │   ├── YYYYMMDD_V<版本号>_<system-or-scope-id>.md
 │   └── attachments/requirement.md
-├── test-points/test-points.md
+├── test-cases/test-cases.md
 ├── test-scripts/
 ├── evidence/
 └── report/report.md
 ```
 
-`test-scripts/` 保存当前 Version 或联动范围内可重复执行的测试脚本，已确认需求发生变化时应及时调整相关脚本；`evidence/` 保存本次测试的 Bug 证据（截图、Trace、HAR、录像等），报告中的 Bug 以相对路径引用，证据不得包含凭据等敏感信息；`report/report.md` 统一保存最近一次正式测试或回归测试的建议版报告，包含测试点结果、Bug、风险、未测试内容和测试建议。
+`test-scripts/` 保存当前 Version 或联动范围内可重复执行的测试脚本，正式测试开始时先批量生成脚本骨架，结束前实际运行并记录关联 Test Case、前置条件、手动登录方式和运行命令；已确认需求发生变化时应及时调整相关脚本。`evidence/` 保存本次测试的 Bug 证据（截图、Trace、HAR、录像等），报告中的 Bug 以相对路径引用，证据不得包含凭据等敏感信息；`report/report.md` 统一保存最近一次正式测试或回归测试的建议版报告，包含测试用例结果、Bug、风险、未测试内容和测试建议。
 
 ### 4.6 联动范围
 
 路径：`projects/<project-name>/integration-scopes/<scope-name>/scope.yaml`。
 
-联动范围只在一个需求需要多个 System 一起验证时创建。`scope.yaml` 按操作顺序列出参与的 System、Version 和已确认测试地址；该目录使用与 Version 相同的 `requirements/`、`test-points/`、`test-scripts/`、`evidence/`、`report/` 结构。长期 Element Map 和 Memory 继续保留在各自 System 下。
+联动范围只在一个需求需要多个 System 一起验证时创建。`scope.yaml` 按操作顺序列出参与的 System、Version 和已确认测试地址；该目录使用与 Version 相同的 `requirements/`、`test-cases/`、`test-scripts/`、`evidence/`、`report/` 结构。长期 Element Map 和 Memory 继续保留在各自 System 下。
 
 `scope.yaml` 至少列出两个参与 System；每项 `order` 为唯一正整数，`system_id` 与 `version_id` 必须是目录安全 ID。Schema 只校验该文件自身结构，不读取其他资产目录验证引用是否存在。
 
@@ -237,11 +237,11 @@ Agent 根据业务名称生成 Project、System、Version 的内部 ID，并展�
 
 浏览器优先级：所有正式测试使用 Google Chrome；内置隔离浏览器只有确认使用 Chrome 时才优先，否则使用能创建新 Chrome 无痕 / 隔离会话的 Playwright 能力。不能创建新隔离会话的连接方式不可用；禁止使用 Edge、Playwright bundled Chromium。禁止复用用户当前已打开的浏览器窗口、Tab、Profile 或地址；必须使用新建的隔离 Chrome 会话。如果没有可用 Chrome 能力，先询问用户是否需要 Agent 协助安装或启用，未确认前不打开用户现有浏览器。每次 Python Playwright 启动前执行本地 Chrome pre-flight 检查。
 
-### 5.3 测试点确认规则
+### 5.3 测试用例确认规则
 
-Agent 在当前 Version 或联动范围的 `test-points/test-points.md` 生成测试点后必须停止。真实业务资产路径是 `projects/<project-name>/systems/<system-name>/versions/<version-name>/test-points/test-points.md`，或 `projects/<project-name>/integration-scopes/<scope-name>/test-points/test-points.md`；不得在项目根目录直接创建 `test-points/`。测试点确认只表示范围获批，只有用户明确说“开始正式测试”或等价表达，才能继续进入正式测试。
+Agent 在当前 Version 或联动范围的 `test-cases/test-cases.md` 生成测试用例后必须停止。真实业务资产路径是 `projects/<project-name>/systems/<system-name>/versions/<version-name>/test-cases/test-cases.md`，或 `projects/<project-name>/integration-scopes/<scope-name>/test-cases/test-cases.md`；不得在项目根目录直接创建 `test-cases/`。测试用例确认只表示范围获批，只有用户明确说“开始正式测试”或等价表达，才能继续进入正式测试。
 
-测试点应根据需求评估：
+测试用例应根据需求评估：
 
 - 功能测试：正常、边界、非法输入、校验、错误、状态、持久化和页面重新进入后的状态。
 - 业务流程测试：前置条件、主流程、分支、失败路径、中断恢复、跨页面 / 跨模块衔接和后置结果；业务数据通过页面行为验证其保存、流转或展示，不默认要求直接访问数据库。
@@ -251,15 +251,15 @@ Agent 在当前 Version 或联动范围的 `test-points/test-points.md` 生成�
 
 ### 5.4 正式测试与回归
 
-测试点确认只表示范围获批，不等于正式测试启动；只有用户明确说“开始正式测试”或等价表达后才能打开浏览器。正式测试只执行已批准的 Test Points，不自动扩大范围。开始后先批量生成脚本并按页面 / 业务流程分组调试定位器和前置数据；正式执行时同组测试点复用同一个隔离浏览器会话，但仍以测试点为结果、报告和断点续跑的最小单位。测试点文件中的每个测试点同时记录`测试状态`（`未测试` / `已测试`）和`测试结果`（`PASS` / `FAIL` / `BLOCKED` / `NOT RUN`）；实际执行并完成结果记录才标为`已测试`，因环境、登录或读取问题未能执行则保留`未测试`。执行字段不属于批准范围指纹。每完成一个测试点立即更新其执行字段，并同步写入报告和进度状态。单个操作最多重试 1 次；单个测试点超过 5 分钟或连续 60 秒没有可观察进展，自动暂停并报告当前测试点、当前子步骤和等待原因，记录为 `BLOCKED` / `NOT RUN`。多个 System 时按测试点顺序操作并核对最终结果；数据有延迟时等待可观察结果和写明的最长时间。点击后判断当前页变化、新页面、外部页面或下载，再继续操作。统计、指标或汇总需求在相同口径、时间范围和筛选条件下与参考数据比较；没有参考数据时记录 `BLOCKED`。
+测试用例确认只表示范围获批，不等于正式测试启动；只有用户明确说“开始正式测试”或等价表达后才能打开浏览器。正式测试只执行已批准的 Test Cases，不自动扩大范围。开始后先批量生成脚本并按页面 / 业务流程分组调试定位器和前置数据；正式执行时同组测试用例复用同一个隔离浏览器会话，但仍以测试用例为结果、报告和断点续跑的最小单位。测试用例文件中的每个测试用例同时记录`测试状态`（`未测试` / `已测试`）、`执行覆盖`（`完整` / `部分` / `未执行`）和`测试结果`（`PASS` / `FAIL` / `BLOCKED` / `NOT RUN`）；只有覆盖完整才能判定 PASS/FAIL，部分覆盖必须 BLOCKED，未执行使用 BLOCKED/NOT RUN。执行字段不属于批准范围指纹。每完成一个测试用例立即更新其执行字段，并同步写入报告和进度状态。执行中发现需求解释、步骤、预期、前置条件或范围变化时，必须暂停、重新确认并更新批准指纹后再继续。单个操作最多重试 1 次；单个测试用例超过 5 分钟或连续 60 秒没有可观察进展，自动暂停并报告当前测试用例、当前子步骤和等待原因，记录为 `BLOCKED` / `NOT RUN`。多个 System 时按测试用例顺序操作并核对最终结果；数据有延迟时等待可观察结果和写明的最长时间。点击后判断当前页变化、新页面、外部页面或下载，再继续操作。统计、指标或汇总需求在相同口径、时间范围和筛选条件下与参考数据比较；没有参考数据时记录 `BLOCKED`。测试结束或异常退出时先保存证据和状态，再自动关闭所有浏览器资源，不询问用户是否关闭。
 
 遇到登录页时，Agent 必须暂停并提示用户手动输入账号密码。用户明确确认登录完成后才能继续。不同账号或角色必须使用独立浏览器会话。
 
 测试结束后：
 
 1. 复用或补充当前 Version 的 `test-scripts/`。
-2. 更新唯一的 `report/report.md`，包含本次范围、脚本、测试点结果、结果汇总、Bug、回归、未测试内容、风险和测试建议；Bug 修复后的回归重新执行当前 Version 或联动范围最终测试点集合，结果汇总只统计本次执行，回归结果与历史结果分开记录。
-3. 根据本次已验证结果，按需更新当前 Version 的测试点、结构化需求中的“测试后的实现说明”，以及 System 级 `element-map/` 和 `memory/`；只沉淀正确、稳定、可复用的事实，不写入推测或临时现象。
+2. 更新唯一的 `report/report.md`，包含本次范围、脚本、测试用例结果、结果汇总、Bug、回归、未测试内容、风险和测试建议；Bug 修复后的回归重新执行当前 Version 或联动范围最终测试用例集合，结果汇总只统计本次执行，回归结果与历史结果分开记录。
+3. 根据本次已验证结果，按需更新当前 Version 的测试用例、结构化需求中的“测试后的实现说明”，以及 System 级 `element-map/` 和 `memory/`；只沉淀正确、稳定、可复用的事实，不写入推测或临时现象。
 4. 向用户汇报结果，不执行 Git 操作。
 
 ## 6. Playwright 测试环境
@@ -289,23 +289,23 @@ Agent 在当前 Version 或联动范围的 `test-points/test-points.md` 生成�
 
 ### 7.1 Element Map
 
-Element Map 是 System 级页面元素地图，记录测试实际使用且后续可能复用的页面、URL pattern、按钮、输入框、表格、菜单、业务含义和稳定 locator。它不记录完整 DOM。
+Element Map 是 System 级页面元素地图，使用 `element-map/index.yaml` 和 `modules/*.yaml` 作为事实源，记录测试实际使用且后续可能复用的页面、入口、URL pattern、状态、按钮、输入框、表格、菜单、业务含义、主/备用 locator、稳定性依据、操作后的状态、验证 Version、验证视口和脚本引用。它不记录完整 DOM。
 
 定位策略按稳定性优先：专用测试属性（如 `data-testid`）优先，其次是 Playwright 语义定位（如 `get_by_role`、`get_by_label`），再其次是基于稳定属性的 CSS Selector，然后是稳定且唯一的文本定位，XPath 仅作为最后兜底。禁止依赖动态 class、深层 DOM 路径、`nth-child`、数组下标、坐标或浏览器临时生成的定位值。
 
-Element Map 应记录主定位、可选备用定位、稳定性依据和最后验证的 Version。
+Element Map 应记录主定位、可选备用定位、稳定性依据、操作后的预期状态、最后验证的 Version 和视口；账号、UID、动态数量、动态 class、深层 DOM 路径和坐标不得作为定位依据。
 
-先读 `element-map/index.md`，再按当前任务读取相关模块。只沉淀长期有价值的元素。
+先读 `element-map/index.yaml`，必要时读 `index.md` 摘要，再按当前任务读取相关 YAML 模块。只沉淀长期有价值的元素。
 
 ### 7.2 Memory
 
-Memory 是 System 级长期知识，记录稳定业务规则、角色权限关系、测试前置条件、数据依赖、模块关系、已验证的重要行为、长期测试经验和已知限制。
+Memory 是 System 级长期知识，记录稳定业务规则、角色权限关系、测试前置条件、数据依赖、模块关系、已验证的重要行为、长期测试经验和已知限制。每个模块必须包含验证 Version、长期用途和稳定事实。
 
-不记录一次性聊天、临时推理、完整 Session 日志、测试流水账或任何凭据。
+不记录一次性聊天、临时推理、完整 Session 日志、测试流水账、账号、UID、一次性样本缺口或任何凭据。
 
 ### 7.3 向量数据库
 
-当前 Markdown / YAML 文件是唯一事实来源。未来向量数据库只保存经过筛选的高价值 Markdown 派生索引，例如结构化需求中的稳定业务规则、角色权限关系和稳定测试点，供不同 Agent 通过 RAG 检索历史知识。Element Map 不默认整体进入向量数据库，只有经过验证、脱离具体页面细节且确有跨版本复用价值的内容，才考虑整理后建立索引。
+当前 Markdown / YAML 文件是唯一事实来源。未来向量数据库只保存经过筛选的高价值 Markdown 派生索引，例如结构化需求中的稳定业务规则、角色权限关系和稳定测试用例，供不同 Agent 通过 RAG 检索历史知识。Element Map 不默认整体进入向量数据库，只有经过验证、脱离具体页面细节且确有跨版本复用价值的内容，才考虑整理后建立索引。
 
 测试报告和测试脚本说明默认不进入向量数据库；如果未来发现某类报告或脚本内容具有稳定复用价值，也必须先筛选、脱敏并明确索引规则。任何向量索引都不能替代本地文件。
 
@@ -320,7 +320,7 @@ Memory 是 System 级长期知识，记录稳定业务规则、角色权限关�
 - 不保存或自动填写密码、Token、Cookie、Storage State 或其他凭据。
 - 敏感信息不得进入代码、测试脚本、YAML、Markdown、报告、Memory、Element Map、日志、截图、Trace、HAR 或视频。
 - 不自动上传文件、删除资产、覆盖已有资产或扩大测试范围。
-- 未经 Test Point 明确批准不得正式测试。
+- 未经 Test Case 明确批准不得正式测试。
 - 未经用户明确指令不得执行任何 Git 命令。
 - 推荐业务分支为 `feature/<project-name>`，但分支由用户自行创建和管理。
 - `master` 有更新时，建议将 `master` 合并到当前工作分支并重新执行受影响的测试。
@@ -338,7 +338,7 @@ pytest 至少覆盖：
 - 不引入数据库、Agent Runtime、LLM SDK 或其他越界依赖。
 - Demo 单入口可发现，示例文件位于 `docs/examples/` 平级目录。
 
-验收时还要人工确认：Agent 能发现 `docs/demo.md`，能先读取上下文，能在测试点后暂停，遇到登录能等待用户手动操作，并能输出一份包含 Bug、测试点结果和建议的统一测试报告。
+验收时还要人工确认：Agent 能发现 `docs/demo.md`，能先读取上下文，能在测试用例后暂停，遇到登录能等待用户手动操作，并能输出一份包含 Bug、测试用例结果和建议的统一测试报告。
 
 ## 11. 文档要求
 
@@ -347,7 +347,7 @@ pytest 至少覆盖：
 - `workflow/README.md` 及各阶段 Prompt：不同 Agent 可复用的意图路由、阶段执行指引和同目录模板，不保存具体项目事实。
 - `docs/architecture.md`：Agent、资产、浏览器和未来派生索引的关系。
 - `workflow/asset-map.md`：真实资产位置、层级、更新者和生命周期。
-- `workflow/testing/rules.md`：测试覆盖、测试点确认、headed、手工登录、会话隔离和安全规则。
+- `workflow/testing/rules.md`：测试覆盖、测试用例确认、headed、手工登录、会话隔离和安全规则。
 - `docs/demo.md` 与 `docs/examples/`：平铺且可发现的示例。
 
 文档和模板必须与代码 Schema、目录契约和安全规则保持一致.

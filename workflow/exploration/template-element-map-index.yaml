@@ -1,0 +1,8 @@
+version: 1
+modules:
+  - id: <module-id>
+    file: modules/<module-id>.yaml
+    purpose: <该模块长期复用的目的>
+    entry:
+      - type: url | navigation | search
+        value: <已验证的入口原文或 URL pattern>

@@ -203,3 +203,20 @@ def test_browser_reuses_main_page_for_repeated_goto(
 
     session.close()
     assert playwright.stop_calls == 1
+
+
+def test_browser_context_manager_closes_after_test_exception(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    browser = FakeBrowser()
+    playwright, _ = install_fake_playwright(monkeypatch, browser)
+
+    with pytest.raises(RuntimeError, match="test failed"):
+        with BrowserSession() as session:
+            assert session.is_closed is False
+            raise RuntimeError("test failed")
+
+    assert browser.context.close_calls == 1
+    assert browser.close_calls == 1
+    assert playwright.stop_calls == 1
+    assert session.is_closed is True

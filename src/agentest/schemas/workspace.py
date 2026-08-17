@@ -10,7 +10,7 @@ WorkflowPhase = Literal[
     "context",
     "requirements",
     "exploration",
-    "test-points",
+    "test-cases",
     "testing",
     "reporting",
     "regression",
@@ -47,10 +47,10 @@ class WorkspaceState(AssetModel):
     last_action: str = ""
     pending_questions: list[str] = Field(default_factory=list)
     browser: BrowserPreferences = Field(default_factory=BrowserPreferences)
-    # 已完成的测试点 ID（增量结果 / 断点续跑用）。仅记录进度，不代表授权仍有效。
-    completed_test_point_ids: list[str] = Field(default_factory=list)
-    # 上次批准时测试点范围的指纹；不包含执行状态、结果、说明、时间和证据。
-    test_points_fingerprint: str = ""
+    # 已完成的测试用例 ID（增量结果 / 断点续跑用）。仅记录进度，不代表授权仍有效。
+    completed_test_case_ids: list[str] = Field(default_factory=list)
+    # 上次批准时测试用例范围的指纹；不包含执行状态、结果、说明、时间和证据。
+    test_cases_fingerprint: str = ""
 
 
 __all__ = [

@@ -1,6 +1,8 @@
-"""TP-001 示例：正常添加联系人。
+"""TC-001 示例：正常添加联系人。
 
-这是结构示例，不连接真实系统执行。
+关联 Test Case：TC-001。
+前置条件：测试用例已批准；测试地址可达；登录由用户手动完成。
+运行方式：python -m pytest docs/examples/test-script.py -q。
 """
 
 from agentest.browser import BrowserSession

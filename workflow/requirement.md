@@ -13,7 +13,7 @@
 
 ## 文件职责
 
-本目录只说明 Agent 如何工作和如何创建资产；真实业务需求、测试点、脚本、报告、Memory 和 Element Map 只能写入 `projects/` 下的标准路径。
+本目录只说明 Agent 如何工作和如何创建资产；真实业务需求、测试用例、脚本、报告、Memory 和 Element Map 只能写入 `projects/` 下的标准路径。
 
 ## 更新规则
 

@@ -31,4 +31,4 @@
 
 ## 阅读策略
 
-先读本契约、`element-map/index.md` 和 `memory/index.md`，再按需读取模块文件和 Version。
+先读本契约、`element-map/index.yaml` 和 `memory/index.md`；必要时读取人工摘要 `element-map/index.md`，再按需读取模块文件和 Version。

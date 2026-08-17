@@ -4,7 +4,7 @@
 
 **Goal:** 让批量测试真正复用同一隔离 Chrome 会话，同时正确处理业务新页签，并让测试模板与 Web 窗口规则一致。
 
-**Architecture:** `BrowserSession.goto()` 复用测试组主 Page，`new_page()` 保留为显式新页签入口；Chrome 预检只识别系统 Chrome，启动失败不再回退到 Chromium。测试脚本模板使用测试组级 Session，测试点仍独立记录结果。卡顿控制继续采用 Prompt 约束，不增加复杂运行器。
+**Architecture:** `BrowserSession.goto()` 复用测试组主 Page，`new_page()` 保留为显式新页签入口；Chrome 预检只识别系统 Chrome，启动失败不再回退到 Chromium。测试脚本模板使用测试组级 Session，测试用例仍独立记录结果。卡顿控制继续采用 Prompt 约束，不增加复杂运行器。
 
 **Tech Stack:** Python 3.11、Playwright、pytest、Pydantic、Markdown/YAML 工作流资产。
 
@@ -57,7 +57,7 @@
 
 - [x] 写契约测试：模板声明测试组级 Session、显式传入测试环境，并说明业务新页签由测试步骤显式处理。
 - [x] 运行契约测试，确认当前模板缺少这些约束。
-- [x] 将模板改为测试组级 BrowserSession，多个测试点共享该 Session；默认示例使用 Web 最大化环境，并提示实际项目应传入最终 System / Version 环境。
+- [x] 将模板改为测试组级 BrowserSession，多个测试用例共享该 Session；默认示例使用 Web 最大化环境，并提示实际项目应传入最终 System / Version 环境。
 - [x] 补充主 Page 与辅助 Page 的使用说明，避免把每个动作拆成独立 Session。
 - [x] 运行目录契约测试，确认文档和模板一致。
 
@@ -70,9 +70,9 @@
 - Modify: `workflow/regression/prompt.md`
 - Test: `tests/test_directory_contracts.py`
 
-- [x] 检查现有规则是否统一为单操作最多重试 1 次、单测试点 5 分钟、连续 60 秒无进展即暂停。
+- [x] 检查现有规则是否统一为单操作最多重试 1 次、单测试用例 5 分钟、连续 60 秒无进展即暂停。
 - [x] 修正仍使用旧阈值或模糊措辞的规则，不增加 watchdog 或复杂调度器。
-- [x] 增加“报告当前测试点、当前子步骤和等待原因”的要求。
+- [x] 增加“报告当前测试用例、当前子步骤和等待原因”的要求。
 - [x] 运行工作流契约测试，确认正式测试和回归测试规则一致。
 
 ### Task 5: 全量验证
@@ -87,5 +87,5 @@
 ## Review Notes
 
 - 由于 AgentTest 当前不是独立测试运行器，时间盒规则属于 Agent 执行约束，不提供操作系统级强制终止。
-- 业务打开新页签不是异常；异常是未区分主 Page 和辅助 Page、或每个测试点无意中创建新 Session。
+- 业务打开新页签不是异常；异常是未区分主 Page 和辅助 Page、或每个测试用例无意中创建新 Session。
 - 本项目禁止自动 Git 操作，因此计划中的提交步骤省略。

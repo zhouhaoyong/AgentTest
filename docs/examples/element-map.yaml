@@ -1,0 +1,8 @@
+version: 1
+modules:
+  - id: contacts
+    file: modules/contacts.yaml
+    purpose: 联系人列表和新增流程的可复用页面元素
+    entry:
+      - type: url
+        value: /contacts

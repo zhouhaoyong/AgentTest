@@ -8,7 +8,7 @@
 
 1. 先看本文件的树形结构。
 2. 再看 Project、System 和 Version 的 YAML 配置。
-3. 再看需求、测试点、测试脚本和测试报告示例。
+3. 再看需求、测试用例、测试脚本和测试报告示例。
 4. 最后看 Element Map 和 Memory，理解哪些知识应该跨 Version 沉淀。
 
 ## 资产树
@@ -23,7 +23,7 @@ Project
     └── Version
         ├── Requirement Source
         ├── Requirement
-        ├── Test Points
+        ├── Test Cases
         ├── Test Scripts
         └── Test Report
 ```
@@ -38,14 +38,15 @@ docs/
     ├── project-requirement.md      # Project 目录契约
     ├── system.yaml                 # System 配置
     ├── system-requirement.md       # System 目录契约
-    ├── element-map.md              # Element Map 示例
+    ├── element-map.yaml            # Element Map 机器可读示例
+    ├── element-map.md              # Element Map 人工索引示例
     ├── memory.md                   # Memory 示例
     ├── version.yaml                # Version 配置
     ├── version-requirement.md      # Version 目录契约
     ├── source.md                   # 原始需求来源示例
     ├── requirement.md              # examples 目录契约
     ├── 20260814_V2026.08.04_demo-web.md # 结构化需求示例
-    ├── test-points.md              # 测试点平铺示例；真实位置见 Version/test-points/test-points.md
+    ├── test-cases.md              # 测试用例平铺示例；真实位置见 Version/test-cases/test-cases.md
     ├── test-script.py              # 可重复执行的测试脚本示例
     └── report.md                   # 测试报告（建议版）示例
 ```
@@ -64,6 +65,7 @@ docs/
 - [system.yaml](examples/system.yaml)
 - [System 目录契约](examples/system-requirement.md)
 - [Element Map 示例](examples/element-map.md)
+- [Element Map YAML 示例](examples/element-map.yaml)
 - [Memory 示例](examples/memory.md)
 
 ### Version
@@ -73,7 +75,7 @@ docs/
 - [examples 目录契约](examples/requirement.md)
 - [原始需求来源](examples/source.md)
 - [结构化需求](examples/20260814_V2026.08.04_demo-web.md)
-- [测试点](examples/test-points.md)
+- [测试用例](examples/test-cases.md)
 - [测试脚本](examples/test-script.py)
 - [测试报告（建议版）](examples/report.md)
 

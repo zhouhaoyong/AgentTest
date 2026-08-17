@@ -4,7 +4,7 @@
 
 **Goal:** 将探索改为由当前需求与既有知识决定的分支，明确用户授权语义，收敛 Prompt 与模板，并把回归定义为当前 Version 全量测试。
 
-**Architecture:** `workflow/requirements` 触发探索决策，按当前 System 的 Memory / Element Map 覆盖度进入 `exploration` 或 `test-points`。测试点文件是当前测试范围的唯一文件事实，用户自然语言授权后由 `testing` 重新读取它。静态测试保护这些脚手架约束，`WorkspaceState` 只保留阶段接续职责。
+**Architecture:** `workflow/requirements` 触发探索决策，按当前 System 的 Memory / Element Map 覆盖度进入 `exploration` 或 `test-cases`。测试用例文件是当前测试范围的唯一文件事实，用户自然语言授权后由 `testing` 重新读取它。静态测试保护这些脚手架约束，`WorkspaceState` 只保留阶段接续职责。
 
 **Tech Stack:** Python 3.13、pytest、Pydantic v2、Markdown。
 
@@ -25,7 +25,7 @@
 
 **Interfaces:**
 - Consumes: 公共 Prompt、模板、示例与 `WorkspaceState`。
-- Produces: 对探索决策、测试点授权语义和全量回归语义的自动化保护。
+- Produces: 对探索决策、测试用例授权语义和全量回归语义的自动化保护。
 
 - [ ] **Step 1: 写入失败的工作流一致性测试**
 
@@ -34,9 +34,9 @@
   ```python
   assert "探索决策" in requirements_prompt
   assert "复用已有知识" in exploration_prompt
-  assert "当前 Version 的完整测试点集合" in regression_prompt
-  assert "状态：Draft" not in test_points_template
-  assert "状态：Draft" not in test_points_prompt
+  assert "当前 Version 的完整测试用例集合" in regression_prompt
+  assert "状态：Draft" not in test_cases_template
+  assert "状态：Draft" not in test_cases_prompt
   ```
 
 - [ ] **Step 2: 写入失败的 WorkspaceState 测试**
@@ -45,14 +45,14 @@
 
   ```python
   state = WorkspaceState()
-  assert "test_points_approved" not in state.model_dump()
+  assert "test_cases_approved" not in state.model_dump()
   ```
 
 - [ ] **Step 3: 运行定向测试并确认失败原因正确**
 
   运行：`python -m pytest tests/test_directory_contracts.py tests/test_schemas.py -q`。
 
-  预期：因旧的直接测试点跳转、`Draft` 标记、旧回归描述及 `test_points_approved` 字段失败。
+  预期：因旧的直接测试用例跳转、`Draft` 标记、旧回归描述及 `test_cases_approved` 字段失败。
 
 ### Task 2: 实现探索决策与当前 Version 全量回归
 
@@ -76,48 +76,48 @@
 
 - [ ] **Step 1: 更新全局路由与用户文档**
 
-  将固定的“需求整理 → 系统探索 → 测试点”表述替换为“需求整理 → 探索决策 → 按需探索 → 测试点”，说明探索不是新增阶段且不属于正式测试。
+  将固定的“需求整理 → 系统探索 → 测试用例”表述替换为“需求整理 → 探索决策 → 按需探索 → 测试用例”，说明探索不是新增阶段且不属于正式测试。
 
 - [ ] **Step 2: 在探索 Prompt 定义三个决策结果**
 
-  明确复用已有知识、目标探索和必须探索的判定依据、允许行为、写入范围与移交规则；要求在测试点范围中记录决策与依据。
+  明确复用已有知识、目标探索和必须探索的判定依据、允许行为、写入范围与移交规则；要求在测试用例范围中记录决策与依据。
 
 - [ ] **Step 3: 让 intake 与 requirements 路由到决策结果**
 
-  `intake` 通过 `requirements` 后进入探索决策；`requirements` 不再无条件跳转 `test-points`，而是读取相关索引后进入 `exploration` 或 `test-points`。
+  `intake` 通过 `requirements` 后进入探索决策；`requirements` 不再无条件跳转 `test-cases`，而是读取相关索引后进入 `exploration` 或 `test-cases`。
 
 - [ ] **Step 4: 将回归范围改为当前 Version 全量集合**
 
-  `regression` 与报告 Prompt / 模板声明：回归执行当前 Version 最终 `test-points.md` 的完整集合；本次结果独立统计，历史结果仅供比较。
+  `regression` 与报告 Prompt / 模板声明：回归执行当前 Version 最终 `test-cases.md` 的完整集合；本次结果独立统计，历史结果仅供比较。
 
-### Task 3: 收敛测试点授权与 Prompt 模板职责
+### Task 3: 收敛测试用例授权与 Prompt 模板职责
 
 **Files:**
 - Modify: `.agentest/requirement.md`
 - Modify: `src/agentest/schemas/workspace.py`
-- Modify: `workflow/test-points/prompt.md`
-- Modify: `workflow/test-points/template-test-points.md`
-- Modify: `workflow/test-points/template-directory-requirement.md`
+- Modify: `workflow/test-cases/prompt.md`
+- Modify: `workflow/test-cases/template-test-cases.md`
+- Modify: `workflow/test-cases/template-directory-requirement.md`
 - Modify: `workflow/testing/prompt.md`
 - Modify: `workflow/testing/rules.md`
-- Modify: `docs/examples/test-points.md`
+- Modify: `docs/examples/test-cases.md`
 - Modify: `docs/examples/report.md`
 
 **Interfaces:**
-- Consumes: 用户明确自然语言授权与当前 Version 的完整测试点文件。
-- Produces: 无 `Draft` / `Approved` 伪状态的测试点；只表示工作阶段的 `WorkspaceState`；报告中的当前 Version 全量回归说明。
+- Consumes: 用户明确自然语言授权与当前 Version 的完整测试用例文件。
+- Produces: 无 `Draft` / `Approved` 伪状态的测试用例；只表示工作阶段的 `WorkspaceState`；报告中的当前 Version 全量回归说明。
 
 - [ ] **Step 1: 删除独立批准状态与过期 Draft 文本**
 
-  移除 `WorkspaceState.test_points_approved`，并从测试点 Prompt、模板和 Demo 中移除文档级与单测试点级的 `状态：Draft`。
+  移除 `WorkspaceState.test_cases_approved`，并从测试用例 Prompt、模板和 Demo 中移除文档级与单测试用例级的 `状态：Draft`。
 
-- [ ] **Step 2: 删除 Prompt 内嵌测试点模板**
+- [ ] **Step 2: 删除 Prompt 内嵌测试用例模板**
 
-  保留 `template-test-points.md` 作为唯一完整模板；`test-points/prompt.md` 改为引用它并只保留阶段执行规则。
+  保留 `template-test-cases.md` 作为唯一完整模板；`test-cases/prompt.md` 改为引用它并只保留阶段执行规则。
 
-- [ ] **Step 3: 统一测试点、测试与报告的授权表述**
+- [ ] **Step 3: 统一测试用例、测试与报告的授权表述**
 
-  明确用户一句话授权后，`testing` 在执行前重新读取当前文件，严格按最终文件测试；报告只记录结果，不反写测试点批准状态。
+  明确用户一句话授权后，`testing` 在执行前重新读取当前文件，严格按最终文件测试；报告只记录结果，不反写测试用例批准状态。
 
 - [ ] **Step 4: 运行定向测试并确认通过**
 
@@ -140,9 +140,9 @@
 
 - [ ] **Step 3: 扫描过期语义与重复模板**
 
-  运行：`rg -n "test_points_approved|状态：Draft|按相关测试点进行回归" AGENTS.md README.md prd.md docs workflow src tests`。
+  运行：`rg -n "test_cases_approved|状态：Draft|按相关测试用例进行回归" AGENTS.md README.md prd.md docs workflow src tests`。
 
-  预期：无生产脚手架中的过期授权或回归语义；`状态：Draft` 与 `test_points_approved` 不再出现。
+  预期：无生产脚手架中的过期授权或回归语义；`状态：Draft` 与 `test_cases_approved` 不再出现。
 
 ## Plan Review
 

@@ -32,7 +32,7 @@
 
 ## 跨 Agent 状态
 
-新增由工作流路由定义的阶段集合：`intake`、`context`、`requirements`、`exploration`、`test-points`、`testing`、`reporting`、`regression`。`WorkspaceState.phase` 只接受这些值，默认值为 `intake`。
+新增由工作流路由定义的阶段集合：`intake`、`context`、`requirements`、`exploration`、`test-cases`、`testing`、`reporting`、`regression`。`WorkspaceState.phase` 只接受这些值，默认值为 `intake`。
 
 浏览器偏好保留 `auto`、`agent_browser` 与 `playwright` 三个内部选择；删除未使用的 `mcp_consent` 字段。公共规则不再要求或提示用户理解 MCP。若运行环境已经提供安全、隔离的浏览器能力，Agent 可以在内部选择它；否则使用 Python Playwright，并只以业务语言说明浏览器是否可用。
 

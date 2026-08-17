@@ -1,7 +1,9 @@
 """关联同一测试组的可重复执行测试脚本模板。
 
-前置条件：测试点已批准；如需登录，由用户手动完成后再继续。
+关联 Test Case：TC-001。
+前置条件：测试用例已批准；测试地址为已确认的测试环境；用户手动登录并确认完成。
 不在脚本、日志或产物中保存账号、密码、Token、Cookie 或 Storage State。
+运行命令：python -m pytest <this-script.py> -q。
 """
 
 from collections.abc import Iterator
@@ -21,8 +23,8 @@ def browser() -> Iterator[BrowserSession]:
 
 
 def test_tp_001_feature_name(browser: BrowserSession) -> None:
-    """验证 TP-001：替换为清晰、可观察的测试目标。"""
-    # 仅在当前 Version 或联动范围已批准的 Test Point 范围内实现稳定定位与断言。
+    """验证 TC-001：替换为清晰、可观察的测试目标。"""
+    # 仅在当前 Version 或联动范围已批准的 Test Case 范围内实现稳定定位与断言。
     page = browser.goto("<confirmed-test-url>")
     # 使用 data-testid、语义 locator 或稳定属性；不要使用动态 class 或坐标。
     assert page.url.startswith("<confirmed-test-url>")

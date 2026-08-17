@@ -91,6 +91,12 @@ class BrowserSession:
             self._main_page = self.new_page()
         return self._main_page
 
+    @property
+    def is_closed(self) -> bool:
+        """Return whether all Playwright resources have been released."""
+
+        return self._playwright is None and self._browser is None and self._context is None
+
     def goto(self, url: str) -> Any:
         page = self.main_page()
         page.goto(url)

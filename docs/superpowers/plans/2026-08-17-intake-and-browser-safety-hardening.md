@@ -14,7 +14,7 @@
 - 用户对话和 `projects/` 叙述性资产默认使用简体中文；被测系统原文、URL、选择器和属性保持原样。
 - 不保存或自动填写密码、Token、Cookie、Storage State，也不复用用户当前打开的浏览器标签页或 Profile。
 - 需求质疑必须先于页面探索；页面探索只验证页面事实，不替用户决定业务目标。
-- 测试点生成后必须停止等待用户明确批准；本计划不改变测试点批准和指纹规则。
+- 测试用例生成后必须停止等待用户明确批准；本计划不改变测试用例批准和指纹规则。
 - 不执行 Git 操作，不创建真实业务 Project，不修改 `workflow/` 之外的业务资产。
 - 现有 `BrowserSession` 仍是 Python Playwright 兜底能力，不扩展为浏览器管理器或外部连接服务。
 
@@ -24,7 +24,7 @@
 - `workflow/context/prompt.md`：规定基础上下文、需求前置条件和状态展示边界。
 - `workflow/requirements/prompt.md`：规定需求完整性审查、矛盾质疑和可测试性确认。
 - `workflow/exploration/prompt.md`：规定探索只验证页面事实，以及探索后差异确认的边界。
-- `workflow/test-points/prompt.md`：规定未解决的需求疑点不能直接形成可执行测试点。
+- `workflow/test-cases/prompt.md`：规定未解决的需求疑点不能直接形成可执行测试用例。
 - `workflow/testing/prompt.md`、`workflow/testing/rules.md`：规定浏览器选择、会话隔离和失败即停止。
 - `workflow/asset-map.md`、`AGENTS.md`、`README.md`、`prd.md`、`docs/architecture.md`：同步公共流程、资产写入和用户可见说明。
 - `src/agentest/browser/session.py`：保留并验证 Playwright 隔离会话兜底，不负责连接用户已有 Chrome。
@@ -58,7 +58,7 @@ def test_intake_prompt_combines_context_and_requirement_review() -> None:
         "写操作风险",
         "不自洽",
         "不完整",
-        "测试点",
+        "测试用例",
     ):
         assert phrase in content
 
@@ -108,7 +108,7 @@ uv run --python 3.11 --no-progress pytest -p no:cacheprovider tests/test_directo
 
 - [ ] **Step 2: 在 context Prompt 中区分基础上下文和需求就绪状态**
 
-明确：Project / System / Version / 地址确认后，只代表“基础上下文已确认”，不代表需求已经可测试。若第一轮需求问题尚未回答，`phase` 保持 `requirements`，问题进入 `pending_questions`，不能移交测试点阶段。
+明确：Project / System / Version / 地址确认后，只代表“基础上下文已确认”，不代表需求已经可测试。若第一轮需求问题尚未回答，`phase` 保持 `requirements`，问题进入 `pending_questions`，不能移交测试用例阶段。
 
 用户可见回执使用类似以下表达：
 
@@ -124,9 +124,9 @@ uv run --python 3.11 --no-progress pytest -p no:cacheprovider tests/test_directo
 
 对每个问题标记为“已确认事实、合理推断、待用户确认或明确排除”，但不能把推断写成已确认需求。涉及登录、权限、数据隔离或写操作时，第一轮就提出相关问题，不等探索结束才提出。
 
-- [ ] **Step 4: 保留原始来源，但延迟结构化需求和测试点**
+- [ ] **Step 4: 保留原始来源，但延迟结构化需求和测试用例**
 
-允许先保存 `requirements/source.md` 作为原文登记；在关键疑点未确认前，不生成结构化需求、不生成测试点、不启动正式测试。用户补充后，再生成唯一结构化需求文档。
+允许先保存 `requirements/source.md` 作为原文登记；在关键疑点未确认前，不生成结构化需求、不生成测试用例、不启动正式测试。用户补充后，再生成唯一结构化需求文档。
 
 - [ ] **Step 5: 更新用户文档和全局规则**
 
@@ -139,7 +139,7 @@ uv run --python 3.11 --no-progress pytest -p no:cacheprovider tests/test_directo
 → 探索决策
 → 页面探索
 → 页面事实差异确认
-→ 测试点
+→ 测试用例
 → 用户批准
 ```
 
@@ -232,14 +232,14 @@ uv run --python 3.11 --no-progress pytest -p no:cacheprovider tests/test_browser
 
 - [ ] **Step 1: 添加阶段写入边界测试**
 
-保护以下约束：上下文确认阶段只写最小 YAML、`.agentest/context.yaml`、`.agentest/state.yaml` 和原始来源登记；需求未确认时不写测试点、测试报告、测试脚本或长期 Memory / Element Map。
+保护以下约束：上下文确认阶段只写最小 YAML、`.agentest/context.yaml`、`.agentest/state.yaml` 和原始来源登记；需求未确认时不写测试用例、测试报告、测试脚本或长期 Memory / Element Map。
 
 ```python
 def test_context_prompt_defers_execution_assets_until_requirements_are_ready() -> None:
     root = Path(__file__).parents[1]
     content = (root / "workflow" / "context" / "prompt.md").read_text(encoding="utf-8")
 
-    assert "不生成测试点" in content
+    assert "不生成测试用例" in content
     assert "不执行正式测试" in content
     assert "只写入" in content
 ```
@@ -264,15 +264,15 @@ def test_context_prompt_defers_execution_assets_until_requirements_are_ready() -
 uv run --python 3.11 --no-progress pytest -p no:cacheprovider tests/test_directory_contracts.py tests/test_schemas.py -q
 ```
 
-预期：通过，且没有新增“测试点已批准”或类似状态字段。
+预期：通过，且没有新增“测试用例已批准”或类似状态字段。
 
 ---
 
-### Task 5: 明确探索后的差异确认和测试点门禁
+### Task 5: 明确探索后的差异确认和测试用例门禁
 
 **Files:**
 - Modify: `workflow/exploration/prompt.md`
-- Modify: `workflow/test-points/prompt.md`
+- Modify: `workflow/test-cases/prompt.md`
 - Modify: `workflow/requirements/prompt.md`
 - Modify: `tests/test_directory_contracts.py`
 
@@ -282,11 +282,11 @@ uv run --python 3.11 --no-progress pytest -p no:cacheprovider tests/test_directo
 
 - [ ] **Step 2: 规定页面差异的处理方式**
 
-探索发现页面没有需求中的按钮、文案或流程时，记录“需求与当前实现差异”，不直接缩小需求、不把现有页面行为改写成预期结果。只有用户确认差异如何处理后，才能形成受影响的测试点。
+探索发现页面没有需求中的按钮、文案或流程时，记录“需求与当前实现差异”，不直接缩小需求、不把现有页面行为改写成预期结果。只有用户确认差异如何处理后，才能形成受影响的测试用例。
 
-- [ ] **Step 3: 保护测试点暂停规则**
+- [ ] **Step 3: 保护测试用例暂停规则**
 
-测试点 Prompt 明确：存在影响范围或预期结果的未决问题时必须暂停提问；测试点文件生成后立即停止，不能因为探索已经完成而自动开始正式测试。
+测试用例 Prompt 明确：存在影响范围或预期结果的未决问题时必须暂停提问；测试用例文件生成后立即停止，不能因为探索已经完成而自动开始正式测试。
 
 - [ ] **Step 4: 运行阶段契约测试**
 
@@ -341,12 +341,12 @@ uv run --python 3.11 --no-progress ruff format --check .
 用截图中的需求模拟一次入口对话，确认 Agent：
 
 - 第一轮同时询问上下文、需求疑点、账号、数据和写操作风险；
-- 在需求疑点未解决前不生成结构化需求或测试点；
+- 在需求疑点未解决前不生成结构化需求或测试用例；
 - 页面探索前先选择内置隔离浏览器；
 - 没有内置浏览器时才创建新 Playwright 会话；
 - 不打开用户已有登录 Chrome；
 - 需求与页面不一致时停下来确认，不擅自改写需求；
-- 测试点生成后停止等待用户批准。
+- 测试用例生成后停止等待用户批准。
 
 - [ ] **Step 5: 复核改动范围**
 
@@ -360,5 +360,5 @@ uv run --python 3.11 --no-progress ruff format --check .
 2. 需求质疑在页面探索前发生；探索只验证页面事实，不能替代需求澄清。
 3. 浏览器顺序固定为“内置隔离浏览器 → 新建 Playwright 隔离会话”，用户现有 Chrome 永不自动使用。
 4. 任何无法证明浏览器隔离、业务目标或测试前置条件的情况都失败即停止。
-5. 上下文确认、需求就绪、测试点批准和正式测试在状态和用户回执中清晰区分。
+5. 上下文确认、需求就绪、测试用例批准和正式测试在状态和用户回执中清晰区分。
 6. 资产写入最小化，避免出现截图中“首轮确认却编辑大量文件”的情况。

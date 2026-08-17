@@ -7,15 +7,27 @@ from typing import Any
 
 import yaml
 
-from agentest.test_points import scope_fingerprint_matches
+from agentest.test_cases import scope_fingerprint_matches
 
-_TEST_POINT_HEADER = re.compile(r"^###\s+(TP-[0-9]+)\b", re.MULTILINE)
-_FIELD_NAMES = ("测试状态", "测试结果", "实际说明", "执行时间", "证据")
+_TEST_CASE_HEADER = re.compile(r"^###\s+(TC-[0-9]+)\b", re.MULTILINE)
+_FIELD_NAMES = ("测试状态", "测试结果", "执行覆盖", "实际说明", "执行时间", "证据")
 _ALLOWED_STATUS = {"未测试", "已测试"}
 _ALLOWED_RESULTS = {"PASS", "FAIL", "BLOCKED", "NOT RUN"}
+_ALLOWED_COVERAGE = {"完整", "部分", "未执行"}
+_MEMORY_HEADINGS = ("验证 Version", "长期用途", "稳定事实")
+_SENSITIVE_MEMORY_PATTERN = re.compile(
+    r"(?i)(?:password|passwd|token|cookie|storage\s*state|密码|口令|验证码)"
+)
+_SCRIPT_METADATA_PATTERNS = {
+    "test_case": re.compile(r"\bTC-[0-9]+\b"),
+    "prerequisite": re.compile(r"(?i)(?:前置条件|prerequisite)"),
+    "manual_login": re.compile(r"(?i)(?:手动登录|manual\s+login)"),
+    "run_command": re.compile(r"(?i)(?:运行(?:方式|命令)|python(?:\.exe)?\s+-m\s+pytest)"),
+}
 _NO_EVIDENCE = {"", "无", "未执行", "未生成", "无证据"}
 _REPORT_ROW = re.compile(
-    r"^\|\s*(TP-[0-9]+)\s*\|[^|]*\|\s*([^|]*)\|\s*(PASS|FAIL|BLOCKED|NOT RUN)\s*\|.*$",
+    r"^\|\s*(TC-[0-9]+)\s*\|[^|]*\|\s*([^|]*)\|\s*"
+    r"(完整|部分|未执行)\s*\|\s*(PASS|FAIL|BLOCKED|NOT RUN)\s*\|.*$",
     re.MULTILINE,
 )
 
@@ -27,6 +39,242 @@ class AssetAuditIssue:
     code: str
     path: str
     message: str
+
+
+def audit_system_assets(system_root: Path) -> list[AssetAuditIssue]:
+    """Validate System-level Element Map YAML and Memory modules."""
+
+    issues: list[AssetAuditIssue] = []
+    if not system_root.is_dir():
+        return [_issue("missing_system_root", system_root, system_root, "System 目录不存在")]
+
+    element_map = system_root / "element-map"
+    element_index = element_map / "index.yaml"
+    if not element_index.is_file():
+        issues.append(
+            _issue(
+                "missing_element_map_index",
+                system_root,
+                element_index,
+                "缺少 element-map/index.yaml",
+            )
+        )
+    else:
+        _audit_element_map(system_root, element_map, element_index, issues)
+
+    memory = system_root / "memory"
+    memory_index = memory / "index.md"
+    memory_modules = memory / "modules"
+    if not memory_index.is_file():
+        issues.append(
+            _issue("missing_memory_index", system_root, memory_index, "缺少 memory/index.md")
+        )
+    if not memory_modules.is_dir():
+        issues.append(
+            _issue("missing_memory_modules", system_root, memory_modules, "缺少 memory/modules/")
+        )
+    else:
+        module_files = sorted(memory_modules.glob("*.md"))
+        if not module_files:
+            issues.append(
+                _issue(
+                    "missing_memory_module",
+                    system_root,
+                    memory_modules,
+                    "memory/modules/ 中没有模块",
+                )
+            )
+        for module_file in module_files:
+            content = module_file.read_text(encoding="utf-8")
+            missing_headings = [
+                heading
+                for heading in _MEMORY_HEADINGS
+                if not re.search(rf"^##\s+{re.escape(heading)}\s*$", content, re.MULTILINE)
+            ]
+            if missing_headings:
+                issues.append(
+                    _issue(
+                        "incomplete_memory_module",
+                        system_root,
+                        module_file,
+                        f"Memory 模块缺少章节：{', '.join(missing_headings)}",
+                    )
+                )
+            if _SENSITIVE_MEMORY_PATTERN.search(content):
+                issues.append(
+                    _issue(
+                        "sensitive_memory_content",
+                        system_root,
+                        module_file,
+                        "Memory 模块包含凭据或验证码相关内容",
+                    )
+                )
+
+    return issues
+
+
+def _audit_element_map(
+    system_root: Path,
+    element_map: Path,
+    index_path: Path,
+    issues: list[AssetAuditIssue],
+) -> None:
+    try:
+        raw: Any = yaml.safe_load(index_path.read_text(encoding="utf-8"))
+    except yaml.YAMLError:
+        issues.append(
+            _issue(
+                "invalid_element_map_index",
+                system_root,
+                index_path,
+                "Element Map index 不是有效 YAML",
+            )
+        )
+        return
+    if (
+        not isinstance(raw, dict)
+        or raw.get("version") != 1
+        or not isinstance(raw.get("modules"), list)
+    ):
+        issues.append(
+            _issue(
+                "invalid_element_map_index",
+                system_root,
+                index_path,
+                "Element Map index 必须包含 version: 1 和 modules 列表",
+            )
+        )
+        return
+
+    for module in raw["modules"]:
+        if not isinstance(module, dict) or not all(
+            isinstance(module.get(field), str) and module[field].strip()
+            for field in ("id", "file", "purpose")
+        ):
+            issues.append(
+                _issue(
+                    "invalid_element_map_index",
+                    system_root,
+                    index_path,
+                    "Element Map index 的模块必须包含 id、file、purpose",
+                )
+            )
+            continue
+        module_path = element_map / module["file"]
+        if not module_path.is_file():
+            issues.append(
+                _issue(
+                    "missing_element_map_module",
+                    system_root,
+                    module_path,
+                    f"Element Map 模块不存在：{module['file']}",
+                )
+            )
+            continue
+        _audit_element_map_module(system_root, module_path, issues)
+
+
+def _audit_element_map_module(
+    system_root: Path,
+    module_path: Path,
+    issues: list[AssetAuditIssue],
+) -> None:
+    try:
+        raw: Any = yaml.safe_load(module_path.read_text(encoding="utf-8"))
+    except yaml.YAMLError:
+        issues.append(
+            _issue(
+                "invalid_element_map_module",
+                system_root,
+                module_path,
+                "Element Map 模块不是有效 YAML",
+            )
+        )
+        return
+    required = ("module_id", "title", "verified_version", "viewport", "pages")
+    if not isinstance(raw, dict) or any(not raw.get(field) for field in required):
+        issues.append(
+            _issue(
+                "invalid_element_map_module",
+                system_root,
+                module_path,
+                "Element Map 模块缺少 module_id、title、verified_version、viewport 或 pages",
+            )
+        )
+        return
+    if not isinstance(raw["pages"], list) or not raw["pages"]:
+        issues.append(
+            _issue(
+                "invalid_element_map_module",
+                system_root,
+                module_path,
+                "Element Map 模块 pages 不能为空",
+            )
+        )
+        return
+    for page in raw["pages"]:
+        if not isinstance(page, dict) or any(
+            not page.get(field) for field in ("id", "url_pattern", "entry", "elements")
+        ):
+            issues.append(
+                _issue(
+                    "incomplete_element_map_page",
+                    system_root,
+                    module_path,
+                    "页面缺少 id、url_pattern、entry 或 elements",
+                )
+            )
+            continue
+        if not isinstance(page["elements"], list) or not page["elements"]:
+            issues.append(
+                _issue(
+                    "incomplete_element_map_page",
+                    system_root,
+                    module_path,
+                    "页面 elements 不能为空",
+                )
+            )
+            continue
+        for element in page["elements"]:
+            fields = (
+                "id",
+                "purpose",
+                "locator",
+                "stability",
+                "verified_version",
+                "verified_viewport",
+            )
+            if not isinstance(element, dict) or any(not element.get(field) for field in fields):
+                issues.append(
+                    _issue(
+                        "incomplete_element_map_element",
+                        system_root,
+                        module_path,
+                        "元素缺少必要字段",
+                    )
+                )
+                continue
+            locator = element["locator"]
+            if not isinstance(locator, dict) or not isinstance(locator.get("primary"), dict):
+                issues.append(
+                    _issue(
+                        "incomplete_element_map_element",
+                        system_root,
+                        module_path,
+                        "元素缺少 locator.primary",
+                    )
+                )
+                continue
+            primary = locator["primary"]
+            if not primary.get("type") or not primary.get("value"):
+                issues.append(
+                    _issue(
+                        "incomplete_element_map_element",
+                        system_root,
+                        module_path,
+                        "locator.primary 缺少 type 或 value",
+                    )
+                )
 
 
 def audit_version_assets(
@@ -69,21 +317,21 @@ def audit_version_assets(
             _issue("missing_requirements", version_root, requirements, "缺少 requirements/")
         )
 
-    test_points_dir = version_root / "test-points"
-    test_points_file = test_points_dir / "test-points.md"
-    _check_file(version_root, test_points_file, "missing_test_points", issues)
+    test_cases_dir = version_root / "test-cases"
+    test_cases_file = test_cases_dir / "test-cases.md"
+    _check_file(version_root, test_cases_file, "missing_test_cases", issues)
     _check_file(
-        version_root, test_points_dir / "requirement.md", "missing_test_points_contract", issues
+        version_root, test_cases_dir / "requirement.md", "missing_test_cases_contract", issues
     )
 
-    test_point_content = (
-        test_points_file.read_text(encoding="utf-8") if test_points_file.is_file() else ""
+    test_case_content = (
+        test_cases_file.read_text(encoding="utf-8") if test_cases_file.is_file() else ""
     )
-    test_point_blocks = _parse_test_points(test_point_content)
-    test_point_ids = set(test_point_blocks)
-    _check_duplicate_ids(version_root, test_point_content, issues)
-    for test_point_id, block in test_point_blocks.items():
-        _check_test_point_fields(version_root, test_point_id, block, issues)
+    test_case_blocks = _parse_test_cases(test_case_content)
+    test_case_ids = set(test_case_blocks)
+    _check_duplicate_ids(version_root, test_case_content, issues)
+    for test_case_id, block in test_case_blocks.items():
+        _check_test_case_fields(version_root, test_case_id, block, issues)
 
     if require_execution_assets:
         scripts_dir = version_root / "test-scripts"
@@ -108,6 +356,8 @@ def audit_version_assets(
                     "test-scripts/ 中没有 Python 测试脚本",
                 )
             )
+        else:
+            _check_test_scripts(version_root, scripts_dir, issues)
 
         report_dir = version_root / "report"
         report_file = report_dir / "report.md"
@@ -115,16 +365,39 @@ def audit_version_assets(
         _check_file(version_root, report_file, "missing_report", issues)
         if report_file.is_file():
             report_content = report_file.read_text(encoding="utf-8")
-            _check_report(version_root, report_content, test_point_ids, issues)
+            _check_report(version_root, report_content, test_case_ids, issues)
 
     if state_path is not None and state_path.is_file():
-        _check_state(version_root, test_point_content, test_point_ids, state_path, issues)
+        _check_state(version_root, test_case_content, test_case_ids, state_path, issues)
 
     return issues
 
 
-def _parse_test_points(content: str) -> dict[str, str]:
-    matches = list(_TEST_POINT_HEADER.finditer(content))
+def _check_test_scripts(
+    version_root: Path,
+    scripts_dir: Path,
+    issues: list[AssetAuditIssue],
+) -> None:
+    for script_path in sorted(scripts_dir.glob("*.py")):
+        content = script_path.read_text(encoding="utf-8")
+        missing = [
+            name
+            for name, pattern in _SCRIPT_METADATA_PATTERNS.items()
+            if not pattern.search(content)
+        ]
+        if missing:
+            issues.append(
+                _issue(
+                    "incomplete_test_script_metadata",
+                    version_root,
+                    script_path,
+                    f"测试脚本缺少元数据：{', '.join(missing)}",
+                )
+            )
+
+
+def _parse_test_cases(content: str) -> dict[str, str]:
+    matches = list(_TEST_CASE_HEADER.finditer(content))
     blocks: dict[str, str] = {}
     for index, match in enumerate(matches):
         end = matches[index + 1].start() if index + 1 < len(matches) else len(content)
@@ -132,9 +405,9 @@ def _parse_test_points(content: str) -> dict[str, str]:
     return blocks
 
 
-def _check_test_point_fields(
+def _check_test_case_fields(
     version_root: Path,
-    test_point_id: str,
+    test_case_id: str,
     block: str,
     issues: list[AssetAuditIssue],
 ) -> None:
@@ -147,8 +420,8 @@ def _check_test_point_fields(
                 _issue(
                     "missing_execution_field",
                     version_root,
-                    version_root / "test-points" / "test-points.md",
-                    f"{test_point_id} 缺少 {field}",
+                    version_root / "test-cases" / "test-cases.md",
+                    f"{test_case_id} 缺少 {field}",
                 )
             )
     status = _field_value(block, "测试状态")
@@ -158,8 +431,8 @@ def _check_test_point_fields(
             _issue(
                 "invalid_test_status",
                 version_root,
-                version_root / "test-points" / "test-points.md",
-                f"{test_point_id} 的测试状态无效",
+                version_root / "test-cases" / "test-cases.md",
+                f"{test_case_id} 的测试状态无效",
             )
         )
     if result and result not in _ALLOWED_RESULTS:
@@ -167,8 +440,31 @@ def _check_test_point_fields(
             _issue(
                 "invalid_test_result",
                 version_root,
-                version_root / "test-points" / "test-points.md",
-                f"{test_point_id} 的测试结果无效",
+                version_root / "test-cases" / "test-cases.md",
+                f"{test_case_id} 的测试结果无效",
+            )
+        )
+    coverage = _field_value(block, "执行覆盖")
+    if coverage and coverage not in _ALLOWED_COVERAGE:
+        issues.append(
+            _issue(
+                "invalid_execution_coverage",
+                version_root,
+                version_root / "test-cases" / "test-cases.md",
+                f"{test_case_id} 的执行覆盖无效",
+            )
+        )
+    elif coverage and (
+        (result in {"PASS", "FAIL"} and (coverage != "完整" or status != "已测试"))
+        or (coverage == "部分" and result != "BLOCKED")
+        or (coverage == "未执行" and result not in {"BLOCKED", "NOT RUN"})
+    ):
+        issues.append(
+            _issue(
+                "inconsistent_execution_coverage",
+                version_root,
+                version_root / "test-cases" / "test-cases.md",
+                f"{test_case_id} 的执行覆盖与测试状态/结果不一致",
             )
         )
     evidence = _field_value(block, "证据")
@@ -179,8 +475,8 @@ def _check_test_point_fields(
                 _issue(
                     "missing_evidence",
                     version_root,
-                    version_root / "test-points" / "test-points.md",
-                    f"{test_point_id} 引用的证据不存在",
+                    version_root / "test-cases" / "test-cases.md",
+                    f"{test_case_id} 引用的证据不存在",
                 )
             )
 
@@ -188,26 +484,26 @@ def _check_test_point_fields(
 def _check_report(
     version_root: Path,
     content: str,
-    test_point_ids: set[str],
+    test_case_ids: set[str],
     issues: list[AssetAuditIssue],
 ) -> None:
     report_file = version_root / "report" / "report.md"
     rows = _REPORT_ROW.findall(content)
-    report_ids = {test_point_id for test_point_id, _, _ in rows}
-    if report_ids != test_point_ids:
+    report_ids = {test_case_id for test_case_id, _, _, _ in rows}
+    if report_ids != test_case_ids:
         issues.append(
             _issue(
-                "report_test_point_mismatch",
+                "report_test_case_mismatch",
                 version_root,
                 report_file,
-                "报告与测试点文件的 TP 集合不一致",
+                "报告与测试用例文件的 测试用例 ID 集合不一致",
             )
         )
 
     summary = {
         key: _summary_value(content, label)
         for key, label in (
-            ("total", "本次测试点总数"),
+            ("total", "本次测试用例总数"),
             ("PASS", "PASS"),
             ("FAIL", "FAIL"),
             ("BLOCKED", "BLOCKED"),
@@ -220,7 +516,7 @@ def _check_report(
         )
     else:
         actual_counts = {result: 0 for result in _ALLOWED_RESULTS}
-        for _, _, result in rows:
+        for _, _, _, result in rows:
             actual_counts[result] += 1
         expected = {key: summary[key] for key in _ALLOWED_RESULTS}
         if summary["total"] != len(rows) or expected != actual_counts:
@@ -230,7 +526,7 @@ def _check_report(
                 )
             )
 
-    for _, script_reference, _ in rows:
+    for _test_case_id, script_reference, _coverage, _result in rows:
         script_reference = script_reference.strip().strip("`")
         if script_reference and script_reference not in {"无", "-"}:
             script_path = version_root / "test-scripts" / Path(script_reference).name
@@ -243,6 +539,33 @@ def _check_report(
                         f"报告引用的脚本不存在：{script_reference}",
                     )
                 )
+    # Re-read the Version test-case file so the report cannot silently change result semantics.
+    test_cases_file = version_root / "test-cases" / "test-cases.md"
+    test_case_blocks = _parse_test_cases(
+        test_cases_file.read_text(encoding="utf-8") if test_cases_file.is_file() else ""
+    )
+    for test_case_id, _, coverage, result in rows:
+        block = test_case_blocks.get(test_case_id, "")
+        expected_coverage = _field_value(block, "执行覆盖")
+        expected_result = _field_value(block, "测试结果")
+        if expected_coverage and coverage != expected_coverage:
+            issues.append(
+                _issue(
+                    "report_execution_coverage_mismatch",
+                    version_root,
+                    report_file,
+                    f"{test_case_id} 的报告执行覆盖与测试用例文件不一致",
+                )
+            )
+        if expected_result and result != expected_result:
+            issues.append(
+                _issue(
+                    "report_result_mismatch",
+                    version_root,
+                    report_file,
+                    f"{test_case_id} 的报告结果与测试用例文件不一致",
+                )
+            )
 
     for reference in re.findall(r"(?:evidence|test-scripts)/[^\s)`|]+", content):
         reference_path = version_root / reference.replace("/", "\\")
@@ -259,8 +582,8 @@ def _check_report(
 
 def _check_state(
     version_root: Path,
-    test_point_content: str,
-    test_point_ids: set[str],
+    test_case_content: str,
+    test_case_ids: set[str],
     state_path: Path,
     issues: list[AssetAuditIssue],
 ) -> None:
@@ -277,27 +600,29 @@ def _check_state(
         )
         return
 
-    completed = raw.get("completed_test_point_ids", [])
-    unknown = set(completed) - test_point_ids if isinstance(completed, list) else set()
+    completed = raw.get("completed_test_case_ids", [])
+    unknown = set(completed) - test_case_ids if isinstance(completed, list) else set()
     if unknown:
         issues.append(
             _issue(
-                "unknown_completed_test_point",
+                "unknown_completed_test_case",
                 version_root,
                 state_path,
-                "state.yaml 包含当前范围外的测试点 ID",
+                "state.yaml 包含当前范围外的测试用例 ID",
             )
         )
 
-    expected = raw.get("test_points_fingerprint", "")
+    expected = raw.get("test_cases_fingerprint", "")
     if not expected:
         issues.append(
-            _issue("missing_fingerprint", version_root, state_path, "state.yaml 缺少测试点范围指纹")
+            _issue(
+                "missing_fingerprint", version_root, state_path, "state.yaml 缺少测试用例范围指纹"
+            )
         )
-    elif not scope_fingerprint_matches(test_point_content, expected):
+    elif not scope_fingerprint_matches(test_case_content, expected):
         issues.append(
             _issue(
-                "fingerprint_mismatch", version_root, state_path, "测试点范围指纹与当前文件不一致"
+                "fingerprint_mismatch", version_root, state_path, "测试用例范围指纹与当前文件不一致"
             )
         )
 
@@ -315,14 +640,14 @@ def _summary_value(content: str, label: str) -> int | None:
 
 
 def _check_duplicate_ids(version_root: Path, content: str, issues: list[AssetAuditIssue]) -> None:
-    ids = _TEST_POINT_HEADER.findall(content)
+    ids = _TEST_CASE_HEADER.findall(content)
     if len(ids) != len(set(ids)):
         issues.append(
             _issue(
-                "duplicate_test_point_id",
+                "duplicate_test_case_id",
                 version_root,
-                version_root / "test-points" / "test-points.md",
-                "测试点 ID 重复",
+                version_root / "test-cases" / "test-cases.md",
+                "测试用例 ID 重复",
             )
         )
 
@@ -347,4 +672,4 @@ def _issue(code: str, version_root: Path, path: Path, message: str) -> AssetAudi
     return AssetAuditIssue(code=code, path=relative_path, message=message)
 
 
-__all__ = ["AssetAuditIssue", "audit_version_assets"]
+__all__ = ["AssetAuditIssue", "audit_system_assets", "audit_version_assets"]

@@ -100,7 +100,7 @@ Expected: PASS，且不启动真实浏览器。
         "context",
         "requirements",
         "exploration",
-        "test-points",
+        "test-cases",
         "testing",
         "reporting",
         "regression",

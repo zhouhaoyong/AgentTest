@@ -38,7 +38,7 @@ workflow/
 │   └── template-workspace-requirement.md
 ├── requirements/
 ├── exploration/
-├── test-points/
+├── test-cases/
 ├── testing/
 ├── reporting/
 └── regression/
@@ -50,11 +50,11 @@ Each stage contains its own `requirement.md`. Its `prompt.md`, rules and templat
 
 `workflow/README.md` is the sole public workflow entry. It maps a user request plus `.agentest/state.yaml` to exactly one stage. The root `AGENTS.md` requires the Agent to read this router first, then the chosen stage contract and prompt.
 
-- Raw requirement: `intake/`, which orchestrates context → requirements → exploration → test points and stops for approval.
+- Raw requirement: `intake/`, which orchestrates context → requirements → exploration → test cases and stops for approval.
 - Context setup or selection: `context/`.
 - Requirement organization: `requirements/`.
 - System exploration and reusable knowledge: `exploration/`.
-- Test-point design: `test-points/`, then mandatory approval wait.
+- Test-case design: `test-cases/`, then mandatory approval wait.
 - Approved execution: `testing/`.
 - Report-only request: `reporting/`, without browser testing.
 - Confirmed bug regression: `regression/`.
@@ -66,8 +66,8 @@ When intent conflicts with the persisted state or lacks key authorization, the A
 - Keep `intake` orchestral: it links to stage-specific instructions instead of duplicating them.
 - Add independent `context/prompt.md` and `exploration/prompt.md` to remove two implicit stages.
 - Clarify every stage's entry condition, required reads, allowed `projects/...` writes, handoff and stop condition.
-- Drop the dedicated `analysis/` stage entirely: analyzing a complex requirement is the model's job during requirement organization and test-point design, not a directory or template to maintain. Requirement depth is captured in `requirements/` and reflected directly in the test points.
-- Add a minimal reusable Playwright script template tied to stable Test Point IDs.
+- Drop the dedicated `analysis/` stage entirely: analyzing a complex requirement is the model's job during requirement organization and test-case design, not a directory or template to maintain. Requirement depth is captured in `requirements/` and reflected directly in the test cases.
+- Add a minimal reusable Playwright script template tied to stable Test Case IDs.
 - Constrain report Bug status to `Open`, `Fixed Pending Regression`, `Regressed` or `Closed`.
 - Normalize `.agentest` contracts to describe `system_type` and Storage State consistently.
 

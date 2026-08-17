@@ -53,7 +53,7 @@
 - [ ] Move each former prompt and related template into its stage directory with `template-` names.
 - [ ] Add context and exploration prompts; keep intake as an orchestration-only entry.
 - [ ] Move workflow, asset and testing rules into the workflow root, testing stage and asset map respectively.
-- [ ] Add stage contracts and the minimal Test Point-linked Playwright template.
+- [ ] Add stage contracts and the minimal Test Case-linked Playwright template.
 - [ ] Update template contents to use their co-located workflow paths and accurate scope.
 
 ### Task 4: Update all rule and documentation references

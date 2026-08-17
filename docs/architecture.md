@@ -22,4 +22,4 @@ AgentTest v0.1 使用本地 Markdown / YAML 文件作为事实来源。Git 可�
 - `schemas/`：校验 Project、System、Version YAML。
 - `browser/`：按 System / Version 测试环境启动默认 headed 的 Playwright 会话。
 
-Agent 负责需求理解、系统探索、测试点生成、人工审核、正式测试以及长期资产更新。
+Agent 负责需求理解、系统探索、测试用例生成、人工审核、正式测试以及长期资产更新。

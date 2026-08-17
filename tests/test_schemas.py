@@ -178,10 +178,10 @@ def test_version_environment_yaml_round_trip_preserves_only_declared_overrides(
     assert environment.locale == "en-US"
 
 
-def test_workspace_state_does_not_persist_test_point_approval() -> None:
+def test_workspace_state_does_not_persist_test_case_approval() -> None:
     state = WorkspaceState()
 
-    assert "test_points_approved" not in state.model_dump()
+    assert "test_cases_approved" not in state.model_dump()
 
 
 @pytest.mark.parametrize(
@@ -191,7 +191,7 @@ def test_workspace_state_does_not_persist_test_point_approval() -> None:
         "context",
         "requirements",
         "exploration",
-        "test-points",
+        "test-cases",
         "testing",
         "reporting",
         "regression",

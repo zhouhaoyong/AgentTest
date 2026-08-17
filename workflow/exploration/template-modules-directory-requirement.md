@@ -2,16 +2,17 @@
 
 ## 目录职责
 
-保存父级 Element Map 或 Memory 的模块文件。
+保存父级 Element Map 或 Memory 的模块文件；Element Map 与 Memory 的事实格式不同。
 
 ## 允许内容
 
-- 可复用的模块 YAML 或 Markdown 文件。
+- Element Map：可复用的模块 YAML 文件。
+- Memory：带固定章节的模块 Markdown 文件。
 - 本文件：目录契约。
 
 ## 文件职责
 
-每个模块文件只描述一个大功能模块，并与索引中的模块 ID 对应。
+每个模块文件只描述一个大功能模块，并与索引中的模块 ID 对应。Element Map 模块必须能被 YAML 解析；Memory 模块必须包含验证 Version、长期用途和稳定事实。
 
 ## 更新规则
 
@@ -24,4 +25,4 @@
 
 ## 阅读策略
 
-先使用父级 `index.md` 选择模块，再读取对应文件。
+先使用 Element Map 的 `index.yaml` 或 Memory 的 `index.md` 选择模块，再读取对应文件。

@@ -14,7 +14,7 @@
 - ID 只作为目录安全、稳定关联标识，不是业务用户 ID、英文名或 Git 分支名。
 - 不索要、保存或自动填写密码、Token、Cookie、Storage State。
 - 不执行 Git 操作；提交、切换测试分支和合并由用户执行。
-- 不修改 Project / System / Version Schema、测试点审批、浏览器测试和报告格式。
+- 不修改 Project / System / Version Schema、测试用例审批、浏览器测试和报告格式。
 
 ---
 
