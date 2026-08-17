@@ -1,5 +1,6 @@
 from typing import Any
 
+from agentest.browser.preflight import inspect_local_playwright
 from agentest.schemas.system import TestEnvironment
 
 
@@ -18,10 +19,16 @@ class BrowserSession:
         self._playwright: Any = None
         self._browser: Any = None
         self._context: Any = None
+        self._main_page: Any = None
 
     def start(self) -> "BrowserSession":
         if self._browser is not None:
             return self
+
+        preflight = inspect_local_playwright()
+        if not preflight.python_playwright_available:
+            raise RuntimeError(preflight.install_prompt)
+
         from playwright.sync_api import sync_playwright
 
         environment = self.test_environment
@@ -39,11 +46,13 @@ class BrowserSession:
                 "slow_mo": self.slow_mo,
                 "args": launch_args,
             }
-            # 优先使用系统真实 Chrome，未安装时回退到 Playwright 自带 Chromium。
+            # 所有业务测试统一使用系统 Google Chrome，不回退到 Edge 或 Playwright Chromium。
             try:
                 self._browser = self._playwright.chromium.launch(channel="chrome", **launch_kwargs)
-            except Exception:
-                self._browser = self._playwright.chromium.launch(**launch_kwargs)
+            except Exception as exc:
+                raise RuntimeError(
+                    "无法启动系统 Google Chrome，请确认 Chrome 已安装并可用。"
+                ) from exc
 
             context_kwargs: dict[str, Any] = {
                 "locale": environment.locale,
@@ -76,8 +85,14 @@ class BrowserSession:
         self.start()
         return self._context.new_page()
 
+    def main_page(self) -> Any:
+        """Return the reusable primary page for the current test group."""
+        if self._main_page is None:
+            self._main_page = self.new_page()
+        return self._main_page
+
     def goto(self, url: str) -> Any:
-        page = self.new_page()
+        page = self.main_page()
         page.goto(url)
         return page
 
@@ -95,6 +110,7 @@ class BrowserSession:
                         self._playwright.stop()
                 finally:
                     self._context = None
+                    self._main_page = None
                     self._browser = None
                     self._playwright = None
 

@@ -8,7 +8,7 @@
 
 - `context.yaml`：当前 Project、System、Version 和测试地址。
 - `context.yaml` 中的 `system_type`：当前 System 类型，取值为 `web`、`h5`、`app` 或 `miniapp`。
-- `state.yaml`：当前工作阶段、浏览器偏好，以及测试进度字段——`completed_test_point_ids`（已完成的测试点，用于增量结果与断点续跑）和 `test_points_fingerprint`（批准时测试点集合的指纹，用于开跑前防漂移比对）。这两个字段只记录进度与比对基准，不作为长期授权。
+- `state.yaml`：当前工作阶段、浏览器偏好，以及测试进度字段——`completed_test_point_ids`（已完成的测试点，用于增量结果与断点续跑）和 `test_points_fingerprint`（批准时测试点范围的指纹，用于开跑前防漂移比对）。执行状态、结果、说明、时间和证据保存在 Version 或联动范围的测试点文件中。这些字段只记录进度、执行记录与比对基准，不作为长期授权。
 - 本文件：目录契约。
 
 ## 文件职责

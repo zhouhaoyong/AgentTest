@@ -1,6 +1,7 @@
 import playwright.sync_api as playwright_sync_api
 import pytest
 
+from agentest.browser.preflight import BrowserCapabilityReport
 from agentest.browser.session import BrowserSession
 from agentest.schemas.system import TestEnvironment as BrowserTestEnvironment
 
@@ -26,11 +27,37 @@ def test_browser_accepts_test_environment_configuration() -> None:
     assert browser.test_environment == environment
 
 
+def test_browser_start_checks_playwright_preflight_before_launch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    environment = BrowserTestEnvironment(maximize=True)
+    browser = BrowserSession(test_environment=environment)
+    report = BrowserCapabilityReport(
+        selected_backend="playwright",
+        builtin_browser_available=False,
+        playwright_mcp_available=False,
+        python_playwright_available=True,
+    )
+    monkeypatch.setattr("agentest.browser.session.inspect_local_playwright", lambda: report)
+
+    assert browser.start() is browser
+    browser.close()
+
+
+class FakePage:
+    def __init__(self) -> None:
+        self.goto_calls: list[str] = []
+
+    def goto(self, url: str) -> None:
+        self.goto_calls.append(url)
+
+
 class FakeContext:
     def __init__(self) -> None:
         self.close_calls = 0
         self.default_timeouts: list[int] = []
         self.navigation_timeouts: list[int] = []
+        self.pages: list[FakePage] = []
 
     def close(self) -> None:
         self.close_calls += 1
@@ -40,6 +67,11 @@ class FakeContext:
 
     def set_default_navigation_timeout(self, timeout: int) -> None:
         self.navigation_timeouts.append(timeout)
+
+    def new_page(self) -> FakePage:
+        page = FakePage()
+        self.pages.append(page)
+        return page
 
 
 class FakeBrowser:
@@ -100,6 +132,15 @@ def install_fake_playwright(
     fake_playwright = FakePlaywright(chromium)
     factory = FakePlaywrightFactory(fake_playwright)
     monkeypatch.setattr(playwright_sync_api, "sync_playwright", lambda: factory)
+    monkeypatch.setattr(
+        "agentest.browser.session.inspect_local_playwright",
+        lambda: BrowserCapabilityReport(
+            selected_backend="playwright",
+            builtin_browser_available=False,
+            playwright_mcp_available=False,
+            python_playwright_available=True,
+        ),
+    )
     return fake_playwright, chromium
 
 
@@ -120,14 +161,15 @@ def test_browser_releases_resources_when_context_setup_fails(
     assert session._playwright is None
 
 
-def test_browser_falls_back_to_chromium_and_applies_maximize_configuration(
+def test_browser_requires_chrome_and_applies_maximize_configuration(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     browser = FakeBrowser()
     playwright, chromium = install_fake_playwright(monkeypatch, browser, fail_chrome=True)
     session = BrowserSession(test_environment=BrowserTestEnvironment(maximize=True))
 
-    session.start()
+    with pytest.raises(RuntimeError, match="Chrome"):
+        session.start()
 
     assert chromium.launch_calls == [
         {
@@ -136,19 +178,28 @@ def test_browser_falls_back_to_chromium_and_applies_maximize_configuration(
             "slow_mo": 0,
             "args": ["--incognito", "--start-maximized"],
         },
-        {
-            "headless": False,
-            "slow_mo": 0,
-            "args": ["--incognito", "--start-maximized"],
-        },
     ]
-    assert browser.context_kwargs == {
-        "locale": "zh-CN",
-        "timezone_id": "Asia/Shanghai",
-        "no_viewport": True,
-    }
+    assert browser.context_kwargs is None
+    assert browser.close_calls == 0
+    assert playwright.stop_calls == 1
+
+
+def test_browser_reuses_main_page_for_repeated_goto(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    browser = FakeBrowser()
+    playwright, _ = install_fake_playwright(monkeypatch, browser)
+    session = BrowserSession()
+
+    first_page = session.goto("https://example.test/first")
+    second_page = session.goto("https://example.test/second")
+
+    assert second_page is first_page
+    assert browser.context.pages == [first_page]
+    assert first_page.goto_calls == [
+        "https://example.test/first",
+        "https://example.test/second",
+    ]
 
     session.close()
-
-    assert browser.close_calls == 1
     assert playwright.stop_calls == 1

@@ -8,6 +8,8 @@
 
 - `browser/`：Playwright 兜底能力。
 - `schemas/`：Pydantic 资产 Schema。
+- `test_points.py`：测试点范围指纹辅助能力。
+- `asset_audit.py`：Version 资产的只读结构一致性审计。
 - `__init__.py`：包元数据。
 - 本文件：目录契约。
 

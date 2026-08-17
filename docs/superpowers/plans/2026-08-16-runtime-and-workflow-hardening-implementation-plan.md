@@ -95,7 +95,16 @@ Expected: PASS，且不启动真实浏览器。
 ```python
 @pytest.mark.parametrize(
     "phase",
-    ["intake", "context", "requirements", "exploration", "test-points", "testing", "reporting", "regression"],
+    [
+        "intake",
+        "context",
+        "requirements",
+        "exploration",
+        "test-points",
+        "testing",
+        "reporting",
+        "regression",
+    ],
 )
 def test_workspace_state_accepts_only_workflow_phases(phase: str) -> None:
     assert WorkspaceState(phase=phase).phase == phase

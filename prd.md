@@ -164,7 +164,7 @@ test_environment:
 
 - `type` 只能是 `web`、`h5`、`app`、`miniapp`。
 - System ID 只需是目录安全串（`^[A-Za-z0-9._-]+$`），系统类型由 `type` 字段承载，不强制在 ID 里带类型后缀；如需区分同业务的不同端，可自行用不同名字，例如 `gumai-pc`、`gumai-h5`。
-- `web` 默认真实最大化窗口（`--start-maximized` + `no_viewport`；`viewport` 仅作无头或回退尺寸，默认 `1920x1080`）；`h5`、`app`、`miniapp` 默认使用 `393x852`（iPhone 14 Pro）、移动端标识和触摸能力。默认操作超时为 `10000` 毫秒。浏览器统一使用 Chrome 无痕模式。
+- `web` 默认真实最大化窗口（`--start-maximized` + `no_viewport`；`viewport` 仅作无头或回退尺寸，默认 `1920x1080`）；`h5`、`app`、`miniapp` 默认使用 `393x852`（iPhone 14 Pro）、移动端标识和触摸能力。默认操作超时为 `10000` 毫秒。所有正式测试使用 Google Chrome；内置隔离浏览器只有确认使用 Chrome 时才优先，否则使用能创建新 Chrome 无痕 / 隔离会话的 Playwright 能力。
 - `base_url` 可以为空；登录方式固定为 `manual`。
 - YAML、代码和测试产物都不得保存账号、密码、Token、Cookie 或 Storage State。
 
@@ -215,7 +215,7 @@ versions/<version-name>/
 
 Agent 首先读取最近的 `requirement.md`、`AGENTS.md`、`prd.md`、Demo 总览，以及 `.agentest/context.yaml` 和 `.agentest/state.yaml`（如果存在）。
 
-首轮必须确认：
+首轮先确认基础信息，并根据原始需求列出编号的待确认问题。基础信息包括：
 
 - Project 中文名称。
 - System 名称和系统类型；多个 System 一起测试时，确认参与系统、对应 Version、地址和操作顺序。
@@ -223,7 +223,7 @@ Agent 首先读取最近的 `requirement.md`、`AGENTS.md`、`prd.md`、Demo 总
 - 测试地址。
 - 原始需求来源。
 
-Agent 根据业务名称生成 Project、System、Version 的内部 ID，并展示映射供用户确认。角色、权限、测试账号和具体测试数据只有在需求整理阶段判断确有必要时才确认，不属于所有项目的首轮必答项。
+Agent 根据业务名称生成 Project、System、Version 的内部 ID，并展示映射供用户确认。需求涉及角色、权限、测试账号、业务数据、写操作或边界时，相关问题必须在同一轮以“待确认需求 1、待确认需求 2……”编号提出；没有待确认问题时不展示该区块。
 
 如果用户只提供原始需求，Agent 必须反问缺失的关键上下文，不得自行编造。用户可以直接修改 YAML；Agent 下一次工作以文件内容为准。
 
@@ -235,11 +235,11 @@ Agent 根据业务名称生成 Project、System、Version 的内部 ID，并展�
 
 正式测试结束后，继续在同一份结构化需求文档中补充“测试后的实现说明”，但不得覆盖原始需求或未经用户确认改变业务目标或需求范围。
 
-浏览器优先级：当前 Agent 的内置浏览器，其次 Python Playwright；其他浏览器连接能力仅作为 Agent 内部的可选增强，不要求用户理解连接方式，也不是项目核心依赖。
+浏览器优先级：所有正式测试使用 Google Chrome；内置隔离浏览器只有确认使用 Chrome 时才优先，否则使用能创建新 Chrome 无痕 / 隔离会话的 Playwright 能力。不能创建新隔离会话的连接方式不可用；禁止使用 Edge、Playwright bundled Chromium。禁止复用用户当前已打开的浏览器窗口、Tab、Profile 或地址；必须使用新建的隔离 Chrome 会话。如果没有可用 Chrome 能力，先询问用户是否需要 Agent 协助安装或启用，未确认前不打开用户现有浏览器。每次 Python Playwright 启动前执行本地 Chrome pre-flight 检查。
 
 ### 5.3 测试点确认规则
 
-Agent 在当前 Version 或联动范围的 `test-points/test-points.md` 生成测试点后必须停止。真实业务资产路径是 `projects/<project-name>/systems/<system-name>/versions/<version-name>/test-points/test-points.md`，或 `projects/<project-name>/integration-scopes/<scope-name>/test-points/test-points.md`；不得在项目根目录直接创建 `test-points/`。只有用户明确表示“测试点确认”“可以开始测试”“按照这些测试点执行”等含义，才能继续。
+Agent 在当前 Version 或联动范围的 `test-points/test-points.md` 生成测试点后必须停止。真实业务资产路径是 `projects/<project-name>/systems/<system-name>/versions/<version-name>/test-points/test-points.md`，或 `projects/<project-name>/integration-scopes/<scope-name>/test-points/test-points.md`；不得在项目根目录直接创建 `test-points/`。测试点确认只表示范围获批，只有用户明确说“开始正式测试”或等价表达，才能继续进入正式测试。
 
 测试点应根据需求评估：
 
@@ -251,7 +251,7 @@ Agent 在当前 Version 或联动范围的 `test-points/test-points.md` 生成�
 
 ### 5.4 正式测试与回归
 
-正式测试只执行已批准的 Test Points，不自动扩大范围。多个 System 时按测试点顺序操作并核对最终结果；数据有延迟时等待可观察结果和写明的最长时间。点击后判断当前页变化、新页面、外部页面或下载，再继续操作。统计、指标或汇总需求在相同口径、时间范围和筛选条件下与参考数据比较；没有参考数据时记录 `BLOCKED`。每个测试点记录 `PASS`、`FAIL`、`BLOCKED` 或 `NOT RUN`。
+测试点确认只表示范围获批，不等于正式测试启动；只有用户明确说“开始正式测试”或等价表达后才能打开浏览器。正式测试只执行已批准的 Test Points，不自动扩大范围。开始后先批量生成脚本并按页面 / 业务流程分组调试定位器和前置数据；正式执行时同组测试点复用同一个隔离浏览器会话，但仍以测试点为结果、报告和断点续跑的最小单位。测试点文件中的每个测试点同时记录`测试状态`（`未测试` / `已测试`）和`测试结果`（`PASS` / `FAIL` / `BLOCKED` / `NOT RUN`）；实际执行并完成结果记录才标为`已测试`，因环境、登录或读取问题未能执行则保留`未测试`。执行字段不属于批准范围指纹。每完成一个测试点立即更新其执行字段，并同步写入报告和进度状态。单个操作最多重试 1 次；单个测试点超过 5 分钟或连续 60 秒没有可观察进展，自动暂停并报告当前测试点、当前子步骤和等待原因，记录为 `BLOCKED` / `NOT RUN`。多个 System 时按测试点顺序操作并核对最终结果；数据有延迟时等待可观察结果和写明的最长时间。点击后判断当前页变化、新页面、外部页面或下载，再继续操作。统计、指标或汇总需求在相同口径、时间范围和筛选条件下与参考数据比较；没有参考数据时记录 `BLOCKED`。
 
 遇到登录页时，Agent 必须暂停并提示用户手动输入账号密码。用户明确确认登录完成后才能继续。不同账号或角色必须使用独立浏览器会话。
 
@@ -259,7 +259,7 @@ Agent 在当前 Version 或联动范围的 `test-points/test-points.md` 生成�
 
 1. 复用或补充当前 Version 的 `test-scripts/`。
 2. 更新唯一的 `report/report.md`，包含本次范围、脚本、测试点结果、结果汇总、Bug、回归、未测试内容、风险和测试建议；Bug 修复后的回归重新执行当前 Version 或联动范围最终测试点集合，结果汇总只统计本次执行，回归结果与历史结果分开记录。
-3. 只有长期可复用的知识才更新 System 级 `element-map/` 和 `memory/`。
+3. 根据本次已验证结果，按需更新当前 Version 的测试点、结构化需求中的“测试后的实现说明”，以及 System 级 `element-map/` 和 `memory/`；只沉淀正确、稳定、可复用的事实，不写入推测或临时现象。
 4. 向用户汇报结果，不执行 Git 操作。
 
 ## 6. Playwright 测试环境
@@ -313,7 +313,7 @@ Memory 是 System 级长期知识，记录稳定业务规则、角色权限关�
 
 `BrowserSession` 是薄封装，只负责启动、创建页面、跳转和关闭，并把 `TestEnvironment` 映射为 Playwright Browser Context 配置。默认 `headless=False`，支持 `slow_mo` 和上下文管理器；页面对象仍使用原生 Playwright API。
 
-它不负责登录、凭据管理、保存 Cookie / Storage State、安装 Chromium 或配置外部浏览器连接。
+它不负责登录、凭据管理、保存 Cookie / Storage State、安装 Google Chrome 或配置外部浏览器连接。
 
 ## 9. 安全与 Git 约束
 
