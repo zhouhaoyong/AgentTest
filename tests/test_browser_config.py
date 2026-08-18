@@ -1,9 +1,18 @@
 import playwright.sync_api as playwright_sync_api
 import pytest
 
-from agentest.browser.preflight import BrowserCapabilityReport
+from agentest.browser.preflight import EnvironmentProbe
 from agentest.browser.session import BrowserSession
 from agentest.schemas.system import TestEnvironment as BrowserTestEnvironment
+
+
+def _ready_probe() -> EnvironmentProbe:
+    return EnvironmentProbe(
+        os_name="Windows",
+        chrome_available=True,
+        playwright_available=True,
+        chrome_version="126.0.0.0",
+    )
 
 
 def test_browser_defaults_to_headed() -> None:
@@ -27,29 +36,17 @@ def test_browser_accepts_test_environment_configuration() -> None:
     assert browser.test_environment == environment
 
 
-def test_browser_start_checks_playwright_preflight_before_launch(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    environment = BrowserTestEnvironment(maximize=True)
-    browser = BrowserSession(test_environment=environment)
-    report = BrowserCapabilityReport(
-        selected_backend="playwright",
-        builtin_browser_available=False,
-        playwright_mcp_available=False,
-        python_playwright_available=True,
-    )
-    monkeypatch.setattr("agentest.browser.session.inspect_local_playwright", lambda: report)
-
-    assert browser.start() is browser
-    browser.close()
-
-
 class FakePage:
     def __init__(self) -> None:
         self.goto_calls: list[str] = []
+        self.evaluate_calls: list[str] = []
 
     def goto(self, url: str) -> None:
         self.goto_calls.append(url)
+
+    def evaluate(self, script: str) -> dict[str, object]:
+        self.evaluate_calls.append(script)
+        return {"availWidth": 1920, "availHeight": 1040, "devicePixelRatio": 1.0}
 
 
 class FakeContext:
@@ -132,15 +129,7 @@ def install_fake_playwright(
     fake_playwright = FakePlaywright(chromium)
     factory = FakePlaywrightFactory(fake_playwright)
     monkeypatch.setattr(playwright_sync_api, "sync_playwright", lambda: factory)
-    monkeypatch.setattr(
-        "agentest.browser.session.inspect_local_playwright",
-        lambda: BrowserCapabilityReport(
-            selected_backend="playwright",
-            builtin_browser_available=False,
-            playwright_mcp_available=False,
-            python_playwright_available=True,
-        ),
-    )
+    monkeypatch.setattr("agentest.browser.session.probe_environment", _ready_probe)
     return fake_playwright, chromium
 
 
@@ -200,6 +189,12 @@ def test_browser_reuses_main_page_for_repeated_goto(
         "https://example.test/first",
         "https://example.test/second",
     ]
+    # 主页面首次创建时通过浏览器内查询记录真实屏幕指标（只查询一次）。
+    assert len(first_page.evaluate_calls) == 1
+    assert session.screen_metrics is not None
+    assert session.screen_metrics.avail_width == 1920
+    assert session.screen_metrics.avail_height == 1040
+    assert session.screen_metrics.device_pixel_ratio == 1.0
 
     session.close()
     assert playwright.stop_calls == 1

@@ -127,7 +127,7 @@ def test_demo_has_a_single_discoverable_entry_and_flat_examples() -> None:
         "element-map.md",
         "memory.md",
         "requirement.md",
-        "20260814_V2026.08.04_demo-web.md",
+        "20260814_V2026.08.04_demo.md",
         "test-cases.md",
         "test-script.py",
         "report.md",

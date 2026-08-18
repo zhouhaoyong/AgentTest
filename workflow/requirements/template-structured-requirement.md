@@ -4,7 +4,7 @@
 > 系统：<system-name>（<system-id>；联动时列出全部）  
 > 系统类型：<web / h5 / app / miniapp>  
 > 版本：<用户确认的版本号>  
-> 联动范围：<单系统可不填>  
+> 多端联动：<单系统可不填；端联动时列出 version.yaml 的 linked_ends 对端>  
 > 文档日期：<YYYY-MM-DD>
 
 ## 1. 需求背景

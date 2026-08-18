@@ -2,11 +2,11 @@
 
 ## 目录职责
 
-保存已确认 Bug 修复后执行当前 Version 或联动范围全量回归的 Prompt。
+保存已确认 Bug 修复后执行当前 Version 全量回归的 Prompt。
 
 ## 允许内容
 
-- `prompt.md`：当前 Version 或联动范围完整测试用例集合的执行与记录规则。
+- `prompt.md`：当前 Version 完整测试用例集合的执行与记录规则。
 - 本文件：目录契约。
 
 ## 禁止事项

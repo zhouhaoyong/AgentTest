@@ -11,7 +11,7 @@ AgentTest 不是一个可运行的程序，而是一套供 Agent 读写的文件
 **前置条件**
 
 - 一个能读写本地文件的 Agent（Codex、Claude Desktop、Claude Code CLI、Hermes Agent、Reasonix 等）。
-- 可选：Python `>= 3.11` 环境，仅当 Agent 没有内置 Chrome、需要 Python Playwright 兜底时才需要。Google Chrome 是否安装由你和当前 Agent 的环境决定，AgentTest 不自动安装。
+- Python `>= 3.11` 环境与 Playwright：正式测试由 Playwright 驱动系统 Google Chrome 的隔离（无痕）会话执行，需要可用的 Python 环境；Google Chrome 是否安装由你和当前 Agent 的环境决定，AgentTest 不自动安装。
 
 **整体流程一览**
 
@@ -49,9 +49,9 @@ AgentTest 不是一个可运行的程序，而是一套供 Agent 读写的文件
 5. **澄清需求。** Agent 审查需求的遗漏、矛盾、边界和开放问题，向你提问并给出建议；你澄清后，它整理出结构化需求（`requirements/YYYYMMDD_V<版本号>_<system-id>.md`，简洁 PRD 形式）。
 6. **探索决策与按需探索。** Agent 先审查并确认需求，再依据该 System 的 Memory / Element Map 覆盖度决定复用已有知识还是启动浏览器做目标探索；探索不等于正式测试。首次探索一个还没有 Element Map 的系统时，只要打开浏览器就开始记录，探索结束即产出第一版 Element Map 供本次测试直接复用。
 7. **生成测试用例后停下（必经暂停点）。** Agent 生成 `test-cases/test-cases.md` 后**必须停止等待你审核**。测试用例确认只表示范围获批，不会启动浏览器；只有你明确说“开始正式测试”或等价表达，才会继续。 “看看”“继续分析”或只说“测试用例确认”都不算启动。
-8. **批量准备后执行已批准的测试用例。** 你明确要求开始后，Agent 先一次性生成脚本骨架，再按页面 / 业务流程分组调试定位器和前置数据；正式执行时同组测试用例复用同一个隔离 Chrome 会话，但仍按测试用例记录结果，不在每个点击动作后重新规划和写文件。Agent 只执行已批准的测试用例，不自动扩大范围。内置浏览器只有确认使用 Chrome 时才可使用；否则使用能创建新 Chrome 无痕会话的 Playwright 能力。没有可用 Chrome 能力时，Agent 会先询问是否需要协助安装或启用，未确认前不会打开你现有的浏览器。需要登录时会暂停，由你手动登录并确认后再继续；不同账号或角色使用隔离的浏览器会话，且绝不保存账号、密码、Token、Cookie 等凭据。
+8. **批量准备后执行已批准的测试用例。** 你明确要求开始后，Agent 先一次性生成脚本骨架，再按页面 / 业务流程分组调试定位器和前置数据；正式执行时同组测试用例复用同一个隔离 Chrome 会话，但仍按测试用例记录结果，不在每个点击动作后重新规划和写文件。Agent 只执行已批准的测试用例，不自动扩大范围。全流程统一使用内置隔离浏览器（由 Playwright 驱动系统 Chrome 的无痕会话），不区分"优先 / 其次"两级后端。无法确认隔离或没有可用 Chrome 能力时，Agent 会先询问是否需要协助安装或启用，未确认前不会打开你现有的浏览器。需要登录时会暂停，由你手动登录并确认后再继续；不同账号或角色使用隔离的浏览器会话，且绝不保存账号、密码、Token、Cookie 等凭据。
 9. **出报告。** 测试结束后，Agent 在测试用例中更新`未测试` / `已测试`及 `PASS` / `FAIL` / `BLOCKED` / `NOT RUN`；实际执行并完成结果记录才标为`已测试`，被环境、登录或读取问题阻塞则保留`未测试`。单个操作最多重试 1 次；单个测试用例超过 5 分钟或连续 60 秒没有可观察进展，自动暂停并报告当前测试用例和等待原因。随后生成统一的 `report/report.md`，记录每个测试用例、Bug、结果汇总、风险和建议；同时核对需求文档里的页面、按钮、列表等名称是否与真实页面一致，必要时更新需求文档。
-10. **回归与沉淀。** Bug 修复且你确认后，让 Agent 重新执行当前 Version 最终测试用例集合的完整回归（联动需求则执行当前联动范围的完整集合）；长期可复用的信息再沉淀到 System 级 Element Map / Memory。
+10. **回归与沉淀。** Bug 修复且你确认后，让 Agent 重新执行当前 Version 最终测试用例集合的完整回归（多端联动时按各参与端 `version.yaml` 的 `linked_ends` 覆盖到相关端）；长期可复用的信息再沉淀到 System 级 Element Map / Memory。
 
 想看一份真实资产长什么样，见 [Demo 总览](docs/demo.md)；想深入了解 Agent 内部如何按阶段路由，见 [`workflow/README.md`](workflow/README.md)。
 
@@ -68,11 +68,10 @@ projects/<project-name>/           # Project
 ├── systems/<system-name>/         # System
 │   ├── element-map/               # 可复用的页面元素信息
 │   ├── memory/                    # 可复用的系统知识
-│   └── versions/<version-name>/   # 一次测试范围及其结果
-└── integration-scopes/<scope>/    # 可选：多个 System 一起测试的资产
+│   └── versions/<version-name>/   # 一次测试范围及其结果（version.yaml 内可含 linked / linked_ends 联动标记）
 ```
 
-一个 Project 可包含多个 System，一个 System 可包含多个 Version。每个 Version 保存需求来源、结构化需求、测试用例、测试脚本和一份统一的测试报告；System 级的 Element Map 和 Memory 可在不同 Version 之间复用。只有当一个需求需要多个 System 一起验证时，才创建 `integration-scopes/<scope>/`；长期知识仍保留在各自 System 下。Version 是测试资产目录，不是 Git 分支。
+一个 Project 可包含多个 System，一个 System 可包含多个 Version。每个 Version 保存需求来源、结构化需求、测试用例、测试脚本和一份统一的测试报告；System 级的 Element Map 和 Memory 可在不同 Version 之间复用。当一个需求需要多个 System 一起验证时，不新建目录，只在参与联动的 `version.yaml` 内用 `linked` / `linked_ends` 登记联动关系，各端资产仍写在各自 Version 下。Version 是测试资产目录，不是 Git 分支。
 
 ### Element Map
 
@@ -102,13 +101,7 @@ projects/<project-name>/
 │       ├── test-scripts/
 │       ├── evidence/
 │       └── report/
-└── integration-scopes/<scope>/     # 仅多个 System 一起测试时创建
-    ├── scope.yaml
-    ├── requirements/
-    ├── test-cases/
-    ├── test-scripts/
-    ├── evidence/
-    └── report/
+└── (多端联动无独立目录：在参与联动的 version.yaml 内用 linked / linked_ends 登记)
 ```
 
 主要产物：
@@ -123,7 +116,7 @@ projects/<project-name>/
 
 System 的 `system.yaml` 保存系统类型、测试地址和默认运行环境；Version 的 `version.yaml` 只记录本次测试地址和必要的差异。登录方式固定为手动，AgentTest 不会在配置里保存任何账号密码。你随时可以直接修改这些 YAML，Agent 下一次工作时以文件内容为准。
 
-所有正式测试使用 Google Chrome。内置隔离浏览器只有确认使用 Chrome 时才优先；否则使用能创建新 Chrome 无痕会话的 Playwright 能力。每次启动 Python Playwright 前都会执行 Chrome pre-flight 检查；如果无法确认隔离，Agent 必须停止；如果能力缺失，Agent 会先询问是否需要协助安装或启用，不会自动使用 Edge、bundled Chromium，也不复用用户当前打开的浏览器。视口按系统类型自动选择：web 使用真实最大化窗口，H5 / 移动端使用移动端视口（如 iPhone 14 Pro）；操作默认超时为 10 秒，可在 `system.yaml` 中按需覆盖。
+所有正式测试统一使用内置隔离浏览器（由 Playwright 驱动系统 Google Chrome 的无痕会话），不区分"优先 / 其次"两级后端。每次启动 Playwright 前都会执行本地环境 pre-flight 检查（操作系统、系统 Chrome、Playwright 可用性等）；如果无法确认隔离，Agent 必须停止；如果能力缺失，Agent 会先询问是否需要协助安装或启用，不会自动使用 Edge、bundled Chromium，也不复用用户当前打开的浏览器。视口按系统类型自动选择：web 使用真实最大化窗口，H5 / 移动端使用移动端视口（如 iPhone 14 Pro）；操作默认超时为 10 秒，可在 `system.yaml` 中按需覆盖。
 
 ## 安全与边界（对你的保证）
 

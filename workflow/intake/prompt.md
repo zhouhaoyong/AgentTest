@@ -9,16 +9,16 @@
 
 ## 必读资料
 
-1. 根目录 `AGENTS.md`、`requirement.md`、`prd.md` 和 [`workflow/README.md`](../README.md)。
+1. 根目录 `AGENTS.md`、`requirement.md`、`prd.md`。
 2. `.agentest/context.yaml` 与 `.agentest/state.yaml`，如存在。
 3. 首次了解仓库时，`docs/demo.md`。
 
 ## 决策与执行
 
-1. 进入 `context/`，确认或复用 Project、System、Version、测试地址和原始需求来源。
+1. 进入 `context/`，确认或复用 Project、System、Version 、测试地址和原始需求来源。
 2. 进入 `requirements/`，保存原始来源、澄清关键问题并整理结构化需求。
 3. 按 `requirements/prompt.md` 进行探索决策：复用已有知识时直接进入 `test-cases/`；目标探索或必须探索时先进入 `exploration/`。
-4. 生成当前 Version 或联动范围的测试用例后停止，等待用户明确授权。
+4. 生成当前 Version 的测试用例后停止，等待用户明确授权。
 
 首轮先确认基础信息，再同步审查需求。用户提供业务可读名称即可，内部 ID 由 Agent 生成并展示确认；需求涉及角色、权限、测试账号、业务数据或写操作时，把相关问题放在同一轮的“待确认需求”中，不再默认推迟到第二轮。
 
@@ -38,6 +38,6 @@
 
 ## 强制停止条件
 
-- Project、System、Version、测试地址、原始需求来源或关键业务规则缺失、冲突时，集中提问后暂停。
+- Project、System、Version 、测试地址、原始需求来源或关键业务规则缺失、冲突时，集中提问后暂停。
 - 待确认需求未清空前，不进入页面探索和测试用例设计。
 - 完成测试用例后不得启动浏览器、执行测试或自行进入 `testing/`；只有用户明确说“开始正式测试”或等价表达时才能继续。

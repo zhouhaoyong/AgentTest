@@ -17,4 +17,4 @@
 
 ## 阅读策略
 
-进入需求整理时读取 `prompt.md` 和当前 Version 或联动范围的真实 `requirements/` 资产。
+进入需求整理时读取 `prompt.md` 和当前 Version 的真实 `requirements/` 资产。

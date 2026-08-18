@@ -23,7 +23,7 @@ AgentTest 是面向现成 AI Agent 的轻量文件化 Web 测试工作区。Mark
 2. 阅读 [工作流路由](workflow/README.md)，根据用户意图和 `.agentest/state.yaml` 选择唯一阶段。
 3. 阅读 `prd.md`，了解产品边界。
 4. 首次了解资产结构时，必须阅读 [Demo 总览](docs/demo.md)。
-5. 确认 Project、相关 System、Version、测试地址和原始 Requirement Source；多个 System 需要一起验证时，确认联动范围和操作顺序。确认测试地址时，从数据安全、数据关联和写操作风险出发，主动建议用户使用测试环境，并确认它不是未经允许的生产环境。
+5. 确认 Project、相关 System、Version 、测试地址和原始 Requirement Source；多个 System 需要一起验证时，在参与联动的 `version.yaml` 用轻量标记（`linked` / `linked_ends`）登记联动关系和操作顺序，不新建独立联动目录。确认测试地址时，从数据安全、数据关联和写操作风险出发，主动建议用户使用测试环境，并确认它不是未经允许的生产环境。
 6. 如果用户只提供原始需求，先反问必要信息，不要自行编造关键上下文。关键疑问尽量一次性、聚焦地集中抛给用户一起回答，避免反复零散追问或无谓发散；用户答复后自然并入原始需求，再形成结构化需求。
 7. 阅读相关 System 的 `memory/index.md` 和 `element-map/index.yaml`，只加载相关模块；必要时读取人工摘要 `element-map/index.md`。
 
@@ -38,7 +38,7 @@ Agent 必须先读取所选 `workflow/<stage>/requirement.md`，再读取该阶�
 - Prompt 和模板是公共脚手架，不得写入项目事实、测试地址、账号、密码或其他敏感信息。
 - Prompt 与现有资产或用户要求冲突时，以本文件、目录契约、已有事实和用户明确要求为准。
 
-跨 Agent 接续工作时，优先读取根目录 `.agentest/context.yaml` 和 `.agentest/state.yaml`。只有上下文缺失或冲突时，才重新询问 Project、System、Version、联动范围、测试地址或当前阶段。
+跨 Agent 接续工作时，优先读取根目录 `.agentest/context.yaml` 和 `.agentest/state.yaml`。只有上下文缺失或冲突时，才重新询问 Project、System、Version 、多端联动标记、测试地址或当前阶段。
 
 ## 必须遵守的工作流
 
@@ -64,7 +64,7 @@ Agent 必须先读取所选 `workflow/<stage>/requirement.md`，再读取该阶�
 - 需求涉及登录、角色差异、数据范围、数据隔离或多账号流程时，首轮确认角色覆盖、账号可用性和数据前置条件；待确认问题必须编号，用户可按编号回复。不索要密码、Token、Cookie 或 Storage State，也不自行编造具体业务数据。
 - 每个阶段先简要告知用户“做什么”和“为什么”；需求未确认前不进入页面探索。
 - 系统探索不等于正式测试。探索决策及依据应在测试用例范围中简要说明。
-- System Memory 和 Element Map 只记录长期可复用的信息。Memory 必须区分验证 Version、长期用途和稳定事实；不记录账号、UID、一次性样本缺口或测试流水账。
+- System Memory 和 Element Map 只记录长期可复用的信息。Memory 必须区分验证 Version 、长期用途和稳定事实；不记录账号、UID、一次性样本缺口或测试流水账。
 
 ### Element Map 与元素定位
 
@@ -84,11 +84,11 @@ Element Map 中的定位必须优先选择稳定、与 DOM 层级解耦的依据
 
 ### 测试用例确认规则
 
-在当前 Version 或联动范围的 `test-cases/test-cases.md` 生成测试用例后必须停止。真实业务资产路径是 `projects/<project-name>/systems/<system-name>/versions/<version-name>/test-cases/test-cases.md`，或 `projects/<project-name>/integration-scopes/<scope-name>/test-cases/test-cases.md`；不得在项目根目录直接创建 `test-cases/`。测试用例确认不等于正式测试，测试用例确认不等于正式测试启动：确认只表示范围获批，只有用户明确说“开始正式测试”或等价表达后，才能打开浏览器并执行。开始前必须重新读取该文件当前完整内容，并以它作为唯一测试范围；“继续分析”“看看”或只说“测试用例确认”不算启动测试。
+在当前 Version 的 `test-cases/test-cases.md` 生成测试用例后必须停止。真实业务资产路径是 `projects/<project-name>/systems/<system-name>/versions/<version-name>/test-cases/test-cases.md`；不得在项目根目录直接创建 `test-cases/`。多端联动只在参与联动的 `version.yaml` 用轻量标记登记，不新建独立联动目录。测试用例确认不等于正式测试，测试用例确认不等于正式测试启动：确认只表示范围获批，只有用户明确说“开始正式测试”或等价表达后，才能打开浏览器并执行。开始前必须重新读取该文件当前完整内容，并以它作为唯一测试范围；“继续分析”“看看”或只说“测试用例确认”不算启动测试。
 
 测试用例必须像软件测试工程师一样先分析需求，再以功能测试和业务流程测试为主线，按需增加角色 / 权限测试，并记录未覆盖、开放问题、阻塞项和风险。多个 System 时写清操作顺序和最终结果；统计、指标或汇总需求写清口径、时间范围、筛选条件和参考数据。
 
-用户批准测试用例时，对最终 `test-cases/test-cases.md` 的测试范围生成一个指纹（如内容哈希），记入 `.agentest/state.yaml` 的 `test_cases_fingerprint`。指纹只覆盖测试用例标题、前置条件、步骤、预期结果、关联需求和测试维度等范围内容，不覆盖`测试状态`、`执行覆盖`、`测试结果`、`实际说明`、`执行时间`和`证据`等执行字段。每次开跑（含中断后续跑）前重新计算当前测试用例范围指纹并比对：一致才执行；不一致说明批准后的测试范围被改动，必须停下、向用户说明差异并重新取得确认，再更新指纹后执行。绝不把"已批准"当作可长期复用的状态自动放行。
+用户批准测试用例时，对最终 `test-cases/test-cases.md` 的测试范围生成一个指纹（如内容哈希），记入 `.agentest/state.yaml` 的 `test_cases_fingerprint`。指纹只覆盖测试用例标题、前置条件、步骤、预期结果、关联需求和测试维度等范围内容，不覆盖`测试状态`、`执行覆盖`、`测试结果`、`实际结果`、`执行时间`和`证据`等执行字段。每次开跑（含中断后续跑）前重新计算当前测试用例范围指纹并比对：一致才执行；不一致说明批准后的测试范围被改动，必须停下、向用户说明差异并重新取得确认，再更新指纹后执行。绝不把"已批准"当作可长期复用的状态自动放行。
 
 ### 正式测试
 
@@ -96,7 +96,7 @@ Element Map 中的定位必须优先选择稳定、与 DOM 层级解耦的依据
 - 开跑前先做批准指纹校验（见测试用例确认规则）：指纹与批准时不一致要停下重新确认。
 - 测试用例获批且用户明确要求开始正式测试后，先批量生成当前范围的脚本骨架，再按页面 / 业务流程分组调试定位器和前置数据；测试结束前必须实际运行并交付可重复脚本；不得一个测试用例从编写、调试到执行完毕后才开始下一个。
 - 正式执行时按测试用例记录结果，但同组测试用例复用同一个隔离浏览器会话；每完成一个测试用例才写一次状态、报告和进度，不在每个点击动作后重新规划和写文件。
-- 每完成一个测试用例即时更新测试用例中的`测试状态`、`执行覆盖`、`测试结果`、`实际说明`、`执行时间`和`证据`，把结果写进 `report/report.md`，并把测试用例 ID 追加到 `.agentest/state.yaml` 的 `completed_test_case_ids`；只有执行覆盖为`完整`时才能 PASS/FAIL，部分执行必须 BLOCKED。中断后重新进入时跳过已完成项、从下一个未完成测试用例续跑，仍需先过范围指纹校验。执行字段和 `completed_test_case_ids` 只记录结果 / 进度，不作为长期授权。
+- 每完成一个测试用例即时更新测试用例中的`测试状态`、`执行覆盖`、`测试结果`、`实际结果`、`执行时间`和`证据`，把结果写进 `report/report.md`，并把测试用例 ID 追加到 `.agentest/state.yaml` 的 `completed_test_case_ids`；只有执行覆盖为`完整`时才能 PASS/FAIL，部分执行必须 BLOCKED。中断后重新进入时跳过已完成项、从下一个未完成测试用例续跑，仍需先过范围指纹校验。执行字段和 `completed_test_case_ids` 只记录结果 / 进度，不作为长期授权。
 - 只执行已经批准的 Test Cases。
 - 未经用户同意，不扩大测试范围。
 - 相关时覆盖功能行为、边界、校验、错误、状态和持久化。
@@ -105,13 +105,13 @@ Element Map 中的定位必须优先选择稳定、与 DOM 层级解耦的依据
 - 统计、指标或汇总需求在相同口径、时间范围和筛选条件下，与可参考的数据比较；没有参考数据时记录阻塞。
 - 相关时覆盖角色可见性、操作权限、数据范围、数据隔离、受限访问和越权风险。
 - 不同账号或角色使用独立浏览器会话。
-- 所有正式测试统一使用 Google Chrome。若内置隔离浏览器能力能确认使用 Chrome，则优先使用；否则使用能创建全新 Chrome 无痕 / 隔离会话的 Playwright 能力。禁止复用用户当前已打开的浏览器窗口、Tab、Profile 或地址；必须使用新建的隔离 Chrome 会话。没有可用 Chrome 能力时，先询问用户是否需要 Agent 协助安装或启用，未确认前不得打开浏览器。Python Playwright 通过全新隔离会话实现（等价无痕：不加载用户的 Chrome 配置、缓存和登录态）。
+- 所有正式测试统一使用内置隔离浏览器（由 Playwright 驱动系统 Google Chrome 的无痕 / 隔离会话），不再区分"优先 / 其次"两级后端。禁止复用用户当前已打开的浏览器窗口、Tab、Profile 或地址；必须使用新建的隔离 Chrome 会话。无法确认隔离或没有可用 Chrome 能力时，先询问用户是否需要 Agent 协助安装或启用，未确认前不得打开浏览器。隔离会话等价无痕：不加载用户的 Chrome 配置、缓存和登录态。
 - 视口按系统类型：web 使用真实最大化窗口；H5 / app / miniapp 使用移动端视口（如 iPhone 14 Pro 393×852）。
 - Python Playwright 默认使用 headed 模式。
 - 需要登录时暂停并请用户手动登录；绝不保存或自动填写凭据。
 - 用户确认登录完成后才能继续；不得保存账号密码、Token、Cookie、Storage State 或其他敏感信息。
 - 敏感信息不得出现在代码、测试脚本、YAML、Markdown、报告、Memory、Element Map、日志、截图、Trace、HAR 或视频中。
-- Bug 证据（截图、Trace、HAR、录像等）统一保存在当前 Version 或联动范围的 `evidence/` 目录，并在报告对应 Bug 中引用相对路径。
+- Bug 证据（截图、Trace、HAR、录像等）统一保存在当前 Version 的 `evidence/` 目录，并在报告对应 Bug 中引用相对路径。
 - Bug 证据应保留足以判断问题的原始页面状态；普通业务数据不要求脱敏，不得为了脱敏而裁剪、遮挡或修改证据。凭据及其他敏感信息仍不得进入任何测试产物。
 - 点击后确认是当前页变化、新页面、外部页面还是下载；切到正确位置后继续。外部页面只验证跳转，下载核对必要内容。
 - 数据更新有等待过程时，等待可观察结果和测试用例写明的最长时间；成功提示不等于通过，最终要核对页面或数据。
@@ -123,7 +123,7 @@ Element Map 中的定位必须优先选择稳定、与 DOM 层级解耦的依据
 
 ### 当前 Version 回归
 
-Bug 修复并经用户确认需要回归时，重新执行当前范围最终 `test-cases/test-cases.md` 中的完整测试用例集合。单系统范围是当前 Version；联动范围只包含 `scope.yaml` 列出的 System 和 Version。原 Bug 场景必须仍被该集合覆盖；不自动扩大到其他 Version、System 或联动范围。
+Bug 修复并经用户确认需要回归时，重新执行当前范围最终 `test-cases/test-cases.md` 中的完整测试用例集合。单系统范围是当前 Version；多端联动时范围只包含各参与端 `version.yaml` 的 `linked_ends` 所登记的 System 和 Version 。原 Bug 场景必须仍被该集合覆盖；不自动扩大到其他 Version 或 System。
 
 如果重要的业务流或权限场景没有执行，不得宣称需求已经完整测试。
 
@@ -133,13 +133,13 @@ Bug 修复并经用户确认需要回归时，重新执行当前范围最终 `te
 
 ## 资产规则
 
-- Project 包含 System；多个 System 需要一起测试时，可增加 `integration-scopes/` 保存联动范围。System 包含可复用的 Element Map、Memory 和 Version。
+- Project 包含 System；多个 System 需要一起测试时，不新建目录，只在参与联动的 `version.yaml` 用 `linked` / `linked_ends` 登记联动关系。System 包含可复用的 Element Map、Memory 和 Version 。
 - Version 是目录，不是 Git 分支。
-- `test-scripts/` 保存当前 Version 或联动范围可重复执行的测试脚本；正式测试后不能为空，并且脚本需注明 Test Case ID、前置条件、手动登录方式和运行命令。
-- `report/report.md` 统一表示当前 Version 或联动范围最近一次正式测试或回归测试的报告，包含测试用例结果、Bug、风险和建议。
+- `test-scripts/` 保存当前 Version 可重复执行的测试脚本；正式测试后不能为空，并且脚本需注明 Test Case ID、前置条件、手动登录方式和运行命令。
+- `report/report.md` 统一表示当前 Version 最近一次正式测试或回归测试的报告，包含测试用例结果、Bug、风险和建议。
 - 报告的结果汇总只统计本次执行的 Test Case；回归测试必须单独记录历史结果与本次结果，不得混合统计。
-- `requirements/requirement.md` 只作为需求目录契约；结构化需求使用 `YYYYMMDD_V<版本号>_<system-or-scope-id>.md` 命名，按简洁产品 PRD 组织，并在测试后继续更新同一文件的测试后的实现说明。
-- 不把完整 System Memory 或 Element Map 复制到 Version。
+- `requirements/requirement.md` 只作为需求目录契约；结构化需求使用 `YYYYMMDD_V<版本号>_<system-id>.md` 命名，按简洁产品 PRD 组织，并在测试后继续更新同一文件的测试后的实现说明。
+- 不把完整 System Memory 或 Element Map 复制到 Version 。
 - 不静默覆盖已有资产。
 
 ## Git 与安全

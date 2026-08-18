@@ -53,7 +53,7 @@ def test_audit_rejects_pass_when_execution_is_only_partial(tmp_path: Path) -> No
 - 测试状态：已测试
 - 测试结果：PASS
 - 执行覆盖：部分
-- 实际说明：只验证了其中一个子场景。
+- 实际结果：只验证了其中一个子场景。
 - 执行时间：2026-08-17 10:00
 - 证据：无
 """,
@@ -75,7 +75,7 @@ def test_audit_rejects_pass_when_test_case_is_not_tested(tmp_path: Path) -> None
 - 测试状态：未测试
 - 测试结果：PASS
 - 执行覆盖：未执行
-- 实际说明：未执行。
+- 实际结果：未执行。
 - 执行时间：未执行
 - 证据：无
 """,
@@ -144,6 +144,94 @@ v1
     assert audit_system_assets(system) == []
 
 
+def _system_with_memory(system: Path) -> None:
+    write_text(system / "memory" / "index.md", "# Memory 索引\n")
+    write_text(
+        system / "memory" / "modules" / "business-rules.md",
+        """# 业务规则
+
+## 验证 Version
+
+v1
+
+## 长期用途
+
+供后续版本复用稳定规则。
+
+## 稳定事实
+
+登录成功后进入首页。
+""",
+    )
+
+
+def test_audit_accepts_minimal_element_map_without_optional_fields(tmp_path: Path) -> None:
+    # 分级校验：省略 stability / verified_version / verified_viewport / entry 等增强字段仍应通过。
+    system = tmp_path / "projects" / "demo" / "systems" / "web"
+    write_text(
+        system / "element-map" / "index.yaml",
+        """version: 1
+modules:
+  - id: login
+    file: modules/login.yaml
+    purpose: 登录与全局导航
+""",
+    )
+    write_text(
+        system / "element-map" / "modules" / "login.yaml",
+        """module_id: login
+title: 登录与全局导航
+pages:
+  - id: login-page
+    url_pattern: '#/login'
+    elements:
+      - id: login-button
+        purpose: 提交登录
+        locator:
+          primary:
+            type: role
+            value: 'get_by_role("button", name="登录")'
+""",
+    )
+    _system_with_memory(system)
+
+    assert audit_system_assets(system) == []
+
+
+def test_audit_reports_element_missing_core_locator(tmp_path: Path) -> None:
+    # 缺少定位核心字段（locator.primary.value）时必须报错。
+    system = tmp_path / "projects" / "demo" / "systems" / "web"
+    write_text(
+        system / "element-map" / "index.yaml",
+        """version: 1
+modules:
+  - id: login
+    file: modules/login.yaml
+    purpose: 登录
+""",
+    )
+    write_text(
+        system / "element-map" / "modules" / "login.yaml",
+        """module_id: login
+title: 登录
+pages:
+  - id: login-page
+    url_pattern: '#/login'
+    elements:
+      - id: login-button
+        purpose: 提交登录
+        locator:
+          primary:
+            type: role
+""",
+    )
+    _system_with_memory(system)
+
+    codes = {issue.code for issue in audit_system_assets(system)}
+
+    assert "incomplete_element_map_element" in codes
+
+
 def test_audit_reports_incomplete_element_map_and_memory(tmp_path: Path) -> None:
     system = tmp_path / "projects" / "demo" / "systems" / "web"
     write_text(system / "element-map" / "index.yaml", "modules: []\n")
@@ -179,7 +267,7 @@ def test_audit_accepts_consistent_executed_version(tmp_path: Path) -> None:
 - 测试状态：已测试
 - 测试结果：PASS
 - 执行覆盖：完整
-- 实际说明：列表展示。
+- 实际结果：列表展示。
 - 执行时间：2026-08-17 10:00
 - 证据：无
 
@@ -264,7 +352,7 @@ def test_audit_reports_scope_count_and_evidence_problems(tmp_path: Path) -> None
 - 测试状态：已测试
 - 测试结果：FAIL
 - 执行覆盖：完整
-- 实际说明：失败。
+- 实际结果：失败。
 - 执行时间：2026-08-17 10:00
 - 证据：evidence/bug.png
 """
@@ -311,7 +399,7 @@ def test_audit_reports_report_result_and_coverage_mismatch(tmp_path: Path) -> No
 - 测试状态：已测试
 - 测试结果：BLOCKED
 - 执行覆盖：部分
-- 实际说明：缺少第二个状态数据。
+- 实际结果：缺少第二个状态数据。
 - 执行时间：2026-08-17 10:00
 - 证据：无
 """
@@ -362,7 +450,7 @@ def test_audit_reports_fingerprint_drift(tmp_path: Path) -> None:
 - 测试状态：未测试
 - 测试结果：NOT RUN
 - 执行覆盖：未执行
-- 实际说明：未执行
+- 实际结果：未执行
 - 执行时间：未执行
 - 证据：无
 """,
@@ -393,7 +481,7 @@ def test_audit_reports_missing_fingerprint(tmp_path: Path) -> None:
 - 测试状态：未测试
 - 测试结果：NOT RUN
 - 执行覆盖：未执行
-- 实际说明：未执行
+- 实际结果：未执行
 - 执行时间：未执行
 - 证据：无
 """,

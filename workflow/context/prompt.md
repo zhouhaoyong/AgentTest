@@ -1,6 +1,6 @@
 # 上下文确认 Prompt
 
-你正在确认或选择真实 Project、System、Version、测试地址和原始需求来源；必要时确认多个 System 的联动范围。
+你正在确认或选择真实 Project、System、Version、测试地址和原始需求来源；必要时确认多个 System 的多端联动关系（在参与联动的 `version.yaml` 用 `linked` / `linked_ends` 轻量标记登记）。
 
 ## 进入条件
 
@@ -8,7 +8,7 @@
 
 ## 必读资料
 
-1. 根目录 `AGENTS.md`、`requirement.md` 和 [`workflow/README.md`](../README.md)。
+1. 根目录 `AGENTS.md`、`requirement.md`。
 2. `.agentest/context.yaml` 与 `.agentest/state.yaml`，如存在。
 3. `projects/` 及目标 Project、System、Version 的目录契约与 YAML；首次了解仓库时读取 `docs/demo.md`。
 
@@ -20,7 +20,7 @@
 4. 征询版本号时给出两种示例形式，例如 `2026.08.01`（年.月.日）或 `v1.0.0`（语义化版本）。若用户给的版本号含中文、空格或非法字符，帮其归一成目录安全串并展示确认，不自行硬塞。
 5. 角色、权限、测试账号和具体业务测试数据不是所有需求都需要，但一旦原始需求涉及它们，就在首轮“待确认需求”中确认可用性和前置条件；不索要账号密码、Token、Cookie 或 Storage State。
 6. 优先复用不冲突的 `.agentest/` 与既有 YAML 事实；已有 System 必须复用，不能静默覆盖。
-7. 从数据安全、数据关联和写操作风险出发，主动建议用户使用测试环境，并确认每个测试地址不是未经用户确认的生产环境；System 配置保存默认环境，Version 仅保存差异字段。联动范围只列出已确认的 System、Version 和地址。
+7. 从数据安全、数据关联和写操作风险出发，主动建议用户使用测试环境，并确认每个测试地址不是未经用户确认的生产环境；System 配置保存默认环境，Version 仅保存差异字段。多端联动只在参与联动的 `version.yaml` 用 `linked_ends` 登记已确认的对端 System / Version，不复制其地址。
 
 ## 首轮提问方式（业务语言）
 
@@ -44,7 +44,7 @@
 
 ## 允许写入的位置
 
-- 新建或更新的业务上下文只能写入 `projects/...` 标准目录；联动范围写入 `projects/<project>/integration-scopes/<scope>/`。
+- 新建或更新的业务上下文只能写入 `projects/...` 标准目录；多端联动不新建目录，只在参与联动的 `version.yaml` 用 `linked` / `linked_ends` 登记。
 - 跨 Agent 接续所需的最小上下文只能写入 `.agentest/context.yaml` 与 `.agentest/state.yaml`。
 
 ## 交付物与移交方向
@@ -54,6 +54,6 @@
 
 ## 强制停止条件
 
-- 缺失或冲突的关键上下文一次性列出后暂停；不得编造 Project、System、Version、联动范围、地址、角色或权限。
+- 缺失或冲突的关键上下文一次性列出后暂停；不得编造 Project、System、Version、多端联动关系、地址、角色或权限。
 - 待确认需求未清空前，不生成结构化需求、不进入页面探索、不设计测试用例。
 - 不保存凭据，不执行正式测试。

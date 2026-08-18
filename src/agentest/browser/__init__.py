@@ -1,17 +1,21 @@
-"""Browser fallback and preflight helpers."""
+"""Browser preflight and isolated-session helpers."""
 
 from agentest.browser.preflight import (
-    BrowserCapabilityReport,
-    choose_browser_backend,
+    EnvironmentProbe,
+    ScreenMetrics,
+    has_local_playwright,
     has_system_chrome,
-    inspect_local_playwright,
+    probe_environment,
+    system_chrome_version,
 )
 from agentest.browser.session import BrowserSession
 
 __all__ = [
-    "BrowserCapabilityReport",
     "BrowserSession",
-    "choose_browser_backend",
+    "EnvironmentProbe",
+    "ScreenMetrics",
+    "has_local_playwright",
     "has_system_chrome",
-    "inspect_local_playwright",
+    "probe_environment",
+    "system_chrome_version",
 ]

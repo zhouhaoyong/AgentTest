@@ -7,7 +7,7 @@
 - 执行类型：正式测试
 - System：Demo Web
 - Version：2026.08.04
-- 使用脚本：`test-scripts/tc-001-add-contact.py`
+- 使用脚本：`test-scripts/contacts-add.py`
 - 登录：未涉及
 
 ## 2. 本次测试范围
@@ -18,8 +18,8 @@
 
 | 测试用例 | 关联需求 | 使用脚本 | 执行覆盖 | 本次结果 | 说明 |
 |---|---|---|---|---|---|
-| TC-001 | 添加联系人 > 需求说明 > 联系人姓名 | `test-scripts/tc-001-add-contact.py` | 完整 | PASS | 联系人保存成功并在列表中展示。 |
-| TC-002 | 添加联系人 > 需求说明 | `test-scripts/tc-001-add-contact.py` | 完整 | PASS | 新增流程完成后，联系人在重新进入列表后仍然存在。 |
+| TC-001 | 添加联系人 > 需求说明 > 联系人姓名 | `test-scripts/contacts-add.py` | 完整 | PASS | 联系人保存成功并在列表中展示。 |
+| TC-002 | 添加联系人 > 需求说明 | `test-scripts/contacts-add.py` | 完整 | PASS | 新增流程完成后，联系人在重新进入列表后仍然存在。 |
 
 ## 4. 本次结果汇总
 

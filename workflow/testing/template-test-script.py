@@ -24,7 +24,7 @@ def browser() -> Iterator[BrowserSession]:
 
 def test_tp_001_feature_name(browser: BrowserSession) -> None:
     """验证 TC-001：替换为清晰、可观察的测试目标。"""
-    # 仅在当前 Version 或联动范围已批准的 Test Case 范围内实现稳定定位与断言。
+    # 仅在当前 Version（含 version.yaml 的 linked_ends 登记的联动端）已批准的 Test Case 范围内实现稳定定位与断言。
     page = browser.goto("<confirmed-test-url>")
     # 使用 data-testid、语义 locator 或稳定属性；不要使用动态 class 或坐标。
     assert page.url.startswith("<confirmed-test-url>")

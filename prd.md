@@ -23,14 +23,14 @@ AgentTest 是面向现成 AI Agent 的轻量文件化 Web 测试工作区。它�
 
 ### 2.1 必须实现
 
-- Project / System / Version / Integration Scope 的 Pydantic v2 YAML Schema。
+- Project / System / Version 的 Pydantic v2 YAML Schema；多端联动为 Version 内的轻量标记（`linked` / `linked_ends`），不再有独立 Integration Scope 资产。
 - System 类型：`web`、`h5`、`app`、`miniapp`。
 - System / Version 的 Playwright 测试环境配置，包括视口、设备、语言、时区和超时。
-- Python Playwright 薄封装，作为 Agent 没有可用浏览器时的兜底能力。
+- Python Playwright 薄封装：统一用 Playwright 驱动系统 Chrome 的隔离（无痕）会话执行所有业务测试。
 - `workflow/` 公共脚手架：按用户流程聚合的 Prompt、模板、目录契约、规则和资产映射。
 - Markdown / YAML 模板、目录契约、README、工作流和测试规则。
 - `.agentest/context.yaml` 与 `.agentest/state.yaml` 的跨 Agent 状态约定，由 Agent 直接读写。
-- 每个 Version 的 `test-scripts/` 和统一的 `report/report.md`；正式测试后 `test-scripts/` 不能为空，并且脚本必须能在手动登录后重复运行当前范围；多个 System 一起测试时，使用 Project 下可选的联动范围目录保存同类资产。
+- 每个 Version 的 `test-scripts/` 和统一的 `report/report.md`；正式测试后 `test-scripts/` 不能为空，并且脚本必须能在手动登录后重复运行当前范围；多个 System 一起测试时，在参与联动的 `version.yaml` 内用轻量标记登记联动关系，各端资产仍写在各自 Version 下。
 - 一个平铺、可发现的 Demo：`docs/demo.md` 链接 `docs/examples/` 下的示例文件。
 - pytest、Ruff 和架构边界测试。
 
@@ -40,7 +40,7 @@ AgentTest 是面向现成 AI Agent 的轻量文件化 Web 测试工作区。它�
 - 前端、Dashboard、用户系统、数据库、远程服务和复杂任务调度器。
 - 自研 Agent Runtime、LLM Provider、OpenAI / Anthropic SDK 或复杂 Memory Engine。
 - 当前版本的 RAG 和向量数据库。未来只把经过筛选的高价值资产作为派生索引；测试报告和测试脚本说明默认不自动向量化。
-- Native App / 小程序专用 Runner；`app`、`miniapp` 是系统身份分类，Playwright 兜底主要面向 Web / H5。
+- Native App / 小程序专用 Runner；`app`、`miniapp` 是系统身份分类，Playwright 驱动的 Chrome 会话主要面向 Web / H5。
 - 自动填写账号密码、凭据管理、Credential Vault、Storage State 管理、自动上传文件、自动安装浏览器或自动配置外部浏览器连接。
 - Git 自动创建分支、commit、push、pull、merge、rebase、reset、stash 或其他历史操作。
 - plugin system、event bus、service container、repository pattern 等复杂抽象。
@@ -107,17 +107,16 @@ AgentTest/
 
 ```text
 Project
-├── System
-│   ├── system.yaml
-│   ├── element-map/
-│   ├── memory/
-│   └── versions/
-│       └── Version
-└── integration-scopes/（可选）
-    └── 联动范围
+└── System
+    ├── system.yaml
+    ├── element-map/
+    ├── memory/
+    └── versions/
+        └── Version
+            └── version.yaml（含 linked / linked_ends 轻量联动标记）
 ```
 
-- 一个 Project 可以包含多个 System，一个 System 可以包含多个 Version。多个 System 必须一起验证时，Project 可增加 `integration-scopes/<scope>/`；它只保存该次联动测试资产。
+- 一个 Project 可以包含多个 System，一个 System 可以包含多个 Version。多个 System 必须一起验证时，不再新建独立联动目录，而是在参与联动的 `version.yaml` 内用 `linked` / `linked_ends` 登记联动关系；各端资产仍写在各自 Version 下。
 - System ID 在 Project 内唯一，Version ID 在 System 内唯一。
 - Version 是测试资产目录，不是 Git 分支。
 - Project、System、Version ID 必须匹配 `^[A-Za-z0-9._-]+$`。
@@ -164,7 +163,7 @@ test_environment:
 
 - `type` 只能是 `web`、`h5`、`app`、`miniapp`。
 - System ID 只需是目录安全串（`^[A-Za-z0-9._-]+$`），系统类型由 `type` 字段承载，不强制在 ID 里带类型后缀；如需区分同业务的不同端，可自行用不同名字，例如 `gumai-pc`、`gumai-h5`。
-- `web` 默认真实最大化窗口（`--start-maximized` + `no_viewport`；`viewport` 仅作无头或回退尺寸，默认 `1920x1080`）；`h5`、`app`、`miniapp` 默认使用 `393x852`（iPhone 14 Pro）、移动端标识和触摸能力。默认操作超时为 `10000` 毫秒。所有正式测试使用 Google Chrome；内置隔离浏览器只有确认使用 Chrome 时才优先，否则使用能创建新 Chrome 无痕 / 隔离会话的 Playwright 能力。
+- `web` 默认真实最大化窗口（`--start-maximized` + `no_viewport`；`viewport` 仅作无头或回退尺寸，默认 `1920x1080`）；`h5`、`app`、`miniapp` 默认使用 `393x852`（iPhone 14 Pro）、移动端标识和触摸能力。默认操作超时为 `10000` 毫秒。所有正式测试统一使用内置隔离浏览器（由 Playwright 驱动系统 Google Chrome 的无痕 / 隔离会话），不再区分"优先 / 其次"两级后端。
 - `base_url` 可以为空；登录方式固定为 `manual`。
 - YAML、代码和测试产物都不得保存账号、密码、Token、Cookie 或 Storage State。
 
@@ -191,7 +190,7 @@ versions/<version-name>/
 ├── requirements/
 │   ├── source.md
 │   ├── requirement.md
-│   ├── YYYYMMDD_V<版本号>_<system-or-scope-id>.md
+│   ├── YYYYMMDD_V<版本号>_<system-id>.md
 │   └── attachments/requirement.md
 ├── test-cases/test-cases.md
 ├── test-scripts/
@@ -199,15 +198,16 @@ versions/<version-name>/
 └── report/report.md
 ```
 
-`test-scripts/` 保存当前 Version 或联动范围内可重复执行的测试脚本，正式测试开始时先批量生成脚本骨架，结束前实际运行并记录关联 Test Case、前置条件、手动登录方式和运行命令；已确认需求发生变化时应及时调整相关脚本。`evidence/` 保存本次测试的 Bug 证据（截图、Trace、HAR、录像等），报告中的 Bug 以相对路径引用，证据不得包含凭据等敏感信息；`report/report.md` 统一保存最近一次正式测试或回归测试的建议版报告，包含测试用例结果、Bug、风险、未测试内容和测试建议。
+`test-scripts/` 保存当前 Version 可重复执行的测试脚本，正式测试开始时先批量生成脚本骨架，结束前实际运行并记录关联 Test Case、前置条件、手动登录方式和运行命令；已确认需求发生变化时应及时调整相关脚本。`evidence/` 保存本次测试的 Bug 证据（截图、Trace、HAR、录像等），报告中的 Bug 以相对路径引用，证据不得包含凭据等敏感信息；`report/report.md` 统一保存最近一次正式测试或回归测试的建议版报告，包含测试用例结果、Bug、风险、未测试内容和测试建议。
 
-### 4.6 联动范围
+### 4.6 多端联动（轻量标记）
 
-路径：`projects/<project-name>/integration-scopes/<scope-name>/scope.yaml`。
+多端联动不再使用独立目录或 `scope.yaml`，而是在参与联动的 `version.yaml` 内声明：
 
-联动范围只在一个需求需要多个 System 一起验证时创建。`scope.yaml` 按操作顺序列出参与的 System、Version 和已确认测试地址；该目录使用与 Version 相同的 `requirements/`、`test-cases/`、`test-scripts/`、`evidence/`、`report/` 结构。长期 Element Map 和 Memory 继续保留在各自 System 下。
+- `linked`：布尔值，是否与其他端联动，默认 `false`。
+- `linked_ends`：`linked=true` 时至少声明一项，每项用 `system_id`（必填，目录安全 ID）、可选 `version_id`（省略表示引用该系统当前范围内的版本）和可选 `note` 指向另一个端。
 
-`scope.yaml` 至少列出两个参与 System；每项 `order` 为唯一正整数，`system_id` 与 `version_id` 必须是目录安全 ID。Schema 只校验该文件自身结构，不读取其他资产目录验证引用是否存在。
+联动端只登记"和谁联动"，不复制其地址或环境；被引用端的测试地址仍以其自身 `version.yaml` 为唯一事实源。Schema 只校验 `version.yaml` 自身结构（`linked` 与 `linked_ends` 的一致性、引用 ID 合法且不重复），是否真实存在被引用端由资产校验在读取目录时确认。各端的需求、测试用例、脚本、证据、报告仍写在各自 Version 下，长期 Element Map 和 Memory 保留在各自 System 下。
 
 ## 5. Agent 工作流
 
@@ -229,17 +229,17 @@ Agent 根据业务名称生成 Project、System、Version 的内部 ID，并展�
 
 ### 5.2 整理需求与探索
 
-先保存或登记 `requirements/source.md`，再审查需求的遗漏、矛盾、边界和可测试性；需要时向用户提出问题并给出建议方案。用户澄清后，生成 `requirements/YYYYMMDD_V<版本号>_<system-or-scope-id>.md`；`requirements/requirement.md` 只作为目录契约。统计、指标或汇总需求还要确认口径、时间范围、筛选条件和可参考的数据来源。
+先保存或登记 `requirements/source.md`，再审查需求的遗漏、矛盾、边界和可测试性；需要时向用户提出问题并给出建议方案。用户澄清后，生成 `requirements/YYYYMMDD_V<版本号>_<system-id>.md`；`requirements/requirement.md` 只作为目录契约。统计、指标或汇总需求还要确认口径、时间范围、筛选条件和可参考的数据来源。
 
 系统探索用于理解页面、业务路径、模块和关键元素，不等于正式测试。需求整理后，Agent 先依据当前需求与 System Memory / Element Map 的覆盖度，选择复用已有知识、目标探索或必须探索；仅在需要时启动浏览器探索。业务期望与当前页面实现必须分开记录；页面没有对应按钮不代表需求无效，页面存在功能也不代表它自动属于本次需求。Agent 可以按需更新 System 级 Element Map / Memory，但只记录长期可复用的信息。
 
 正式测试结束后，继续在同一份结构化需求文档中补充“测试后的实现说明”，但不得覆盖原始需求或未经用户确认改变业务目标或需求范围。
 
-浏览器优先级：所有正式测试使用 Google Chrome；内置隔离浏览器只有确认使用 Chrome 时才优先，否则使用能创建新 Chrome 无痕 / 隔离会话的 Playwright 能力。不能创建新隔离会话的连接方式不可用；禁止使用 Edge、Playwright bundled Chromium。禁止复用用户当前已打开的浏览器窗口、Tab、Profile 或地址；必须使用新建的隔离 Chrome 会话。如果没有可用 Chrome 能力，先询问用户是否需要 Agent 协助安装或启用，未确认前不打开用户现有浏览器。每次 Python Playwright 启动前执行本地 Chrome pre-flight 检查。
+浏览器：全流程统一使用内置隔离浏览器（由 Playwright 驱动系统 Google Chrome 的无痕会话），不再区分"优先 / 其次"两级后端。禁止使用 Edge、Playwright bundled Chromium。禁止复用用户当前已打开的浏览器窗口、Tab、Profile 或地址；必须使用新建的隔离 Chrome 会话。无法确认隔离或没有可用 Chrome 能力时，先询问用户是否需要 Agent 协助安装或启用，未确认前绝不打开用户现有浏览器。每次 Playwright 启动前执行本地环境 pre-flight 检查（操作系统、系统 Chrome、Playwright 可用性等）。
 
 ### 5.3 测试用例确认规则
 
-Agent 在当前 Version 或联动范围的 `test-cases/test-cases.md` 生成测试用例后必须停止。真实业务资产路径是 `projects/<project-name>/systems/<system-name>/versions/<version-name>/test-cases/test-cases.md`，或 `projects/<project-name>/integration-scopes/<scope-name>/test-cases/test-cases.md`；不得在项目根目录直接创建 `test-cases/`。测试用例确认只表示范围获批，只有用户明确说“开始正式测试”或等价表达，才能继续进入正式测试。
+Agent 在当前 Version 的 `test-cases/test-cases.md` 生成测试用例后必须停止。真实业务资产路径是 `projects/<project-name>/systems/<system-name>/versions/<version-name>/test-cases/test-cases.md`；不得在项目根目录直接创建 `test-cases/`。多端联动只在参与联动的 `version.yaml` 用轻量标记登记，不新建独立联动目录。测试用例确认只表示范围获批，只有用户明确说“开始正式测试”或等价表达，才能继续进入正式测试。
 
 测试用例应根据需求评估：
 
@@ -258,7 +258,7 @@ Agent 在当前 Version 或联动范围的 `test-cases/test-cases.md` 生成测�
 测试结束后：
 
 1. 复用或补充当前 Version 的 `test-scripts/`。
-2. 更新唯一的 `report/report.md`，包含本次范围、脚本、测试用例结果、结果汇总、Bug、回归、未测试内容、风险和测试建议；Bug 修复后的回归重新执行当前 Version 或联动范围最终测试用例集合，结果汇总只统计本次执行，回归结果与历史结果分开记录。
+2. 更新唯一的 `report/report.md`，包含本次范围、脚本、测试用例结果、结果汇总、Bug、回归、未测试内容、风险和测试建议；Bug 修复后的回归重新执行当前 Version 最终测试用例集合，结果汇总只统计本次执行，回归结果与历史结果分开记录。
 3. 根据本次已验证结果，按需更新当前 Version 的测试用例、结构化需求中的“测试后的实现说明”，以及 System 级 `element-map/` 和 `memory/`；只沉淀正确、稳定、可复用的事实，不写入推测或临时现象。
 4. 向用户汇报结果，不执行 Git 操作。
 

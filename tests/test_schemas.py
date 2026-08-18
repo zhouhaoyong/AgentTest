@@ -4,11 +4,10 @@ import pytest
 import yaml
 from pydantic import ValidationError
 
-import agentest.schemas as schemas
 from agentest.schemas.project import ProjectConfig, load_yaml_model
 from agentest.schemas.system import SystemConfig
 from agentest.schemas.version import VersionConfig
-from agentest.schemas.workspace import BrowserPreferences, WorkspaceContext, WorkspaceState
+from agentest.schemas.workspace import WorkspaceContext, WorkspaceState
 
 
 def test_project_config_accepts_minimal_valid_data() -> None:
@@ -201,101 +200,116 @@ def test_workspace_state_accepts_only_workflow_phases(phase: str) -> None:
     assert WorkspaceState(phase=phase).phase == phase
 
 
-def test_workspace_state_rejects_unknown_phase_and_mcp_consent() -> None:
+def test_workspace_state_rejects_unknown_phase() -> None:
     with pytest.raises(ValidationError):
         WorkspaceState(phase="requirement")
+
+
+def test_workspace_state_rejects_unknown_field() -> None:
+    # 统一后端后不再有浏览器选择配置；多余字段应被 extra="forbid" 拒绝。
     with pytest.raises(ValidationError):
-        BrowserPreferences(mcp_consent="granted")
+        WorkspaceState(browser={"selected": "auto"})
 
 
-def test_browser_preferences_reject_unknown_browser_selection() -> None:
-    with pytest.raises(ValidationError):
-        BrowserPreferences(selected="external-browser")
-
-
-def test_workspace_context_accepts_optional_integration_scope() -> None:
+def test_workspace_context_tracks_only_confirmed_scope() -> None:
     context = WorkspaceContext(
         project_id="store",
         system_id="shop-web",
-        integration_scope_id="order-sync",
+        version_id="v0.0.1",
     )
 
-    assert context.integration_scope_id == "order-sync"
+    assert context.project_id == "store"
+    assert context.system_id == "shop-web"
+    assert context.version_id == "v0.0.1"
 
 
-def test_integration_scope_accepts_ordered_systems() -> None:
-    scope = schemas.IntegrationScopeConfig(
-        id="order-sync",
-        name="订单联动",
-        systems=[
-            {"order": 1, "system_id": "shop-web", "version_id": "v1"},
-            {"order": 2, "system_id": "warehouse-web", "version_id": "v2"},
+def test_workspace_context_rejects_removed_integration_scope_field() -> None:
+    # 联动已改为版本内的轻量标记；上下文不再持有 integration_scope_id / test_url。
+    with pytest.raises(ValidationError):
+        WorkspaceContext(project_id="store", system_id="shop-web", integration_scope_id="x")
+    with pytest.raises(ValidationError):
+        WorkspaceContext(project_id="store", system_id="shop-web", test_url="https://x.test")
+
+
+def test_version_declares_lightweight_linked_ends() -> None:
+    version = VersionConfig(
+        id="v0.0.1",
+        name="v0.0.1",
+        linked=True,
+        linked_ends=[
+            {"system_id": "shop-web", "version_id": "v0.0.1", "note": "下单入口"},
+            {"system_id": "warehouse-web"},
         ],
     )
 
-    assert [member.order for member in scope.systems] == [1, 2]
+    assert version.linked is True
+    assert [end.system_id for end in version.linked_ends] == ["shop-web", "warehouse-web"]
+    # 省略 version_id 表示引用该系统当前范围内的版本。
+    assert version.linked_ends[1].version_id == ""
+
+
+def test_version_defaults_to_no_linkage() -> None:
+    version = VersionConfig(id="v0.0.1", name="v0.0.1")
+
+    assert version.linked is False
+    assert version.linked_ends == []
 
 
 @pytest.mark.parametrize(
-    "scope_data",
+    "version_data",
     [
+        # linked=True 却没有声明任何联动端。
+        {"id": "v0.0.1", "name": "v0.0.1", "linked": True},
+        # linked=False 却声明了联动端。
         {
-            "id": "order-sync",
-            "name": "订单联动",
-            "systems": [{"order": 1, "system_id": "shop-web", "version_id": "v1"}],
+            "id": "v0.0.1",
+            "name": "v0.0.1",
+            "linked": False,
+            "linked_ends": [{"system_id": "shop-web"}],
         },
+        # 重复引用同一端。
         {
-            "id": "order-sync",
-            "name": "订单联动",
-            "systems": [
-                {"order": 1, "system_id": "shop-web", "version_id": "v1"},
-                {"order": 1, "system_id": "warehouse-web", "version_id": "v2"},
+            "id": "v0.0.1",
+            "name": "v0.0.1",
+            "linked": True,
+            "linked_ends": [
+                {"system_id": "shop-web", "version_id": "v1"},
+                {"system_id": "shop-web", "version_id": "v1"},
             ],
         },
+        # 联动端引用了非法 ID。
         {
-            "id": "order-sync",
-            "name": "订单联动",
-            "systems": [
-                {"order": 1, "system_id": "shop/web", "version_id": "v1"},
-                {"order": 2, "system_id": "warehouse-web", "version_id": "v2"},
-            ],
+            "id": "v0.0.1",
+            "name": "v0.0.1",
+            "linked": True,
+            "linked_ends": [{"system_id": "shop/web"}],
         },
     ],
 )
-def test_integration_scope_rejects_invalid_members(scope_data: dict[str, object]) -> None:
+def test_version_rejects_invalid_linkage(version_data: dict[str, object]) -> None:
     with pytest.raises(ValidationError):
-        schemas.IntegrationScopeConfig(**scope_data)
+        VersionConfig(**version_data)
 
 
-def test_integration_scope_yaml_loads_with_shared_model_loader(tmp_path: Path) -> None:
-    path = tmp_path / "scope.yaml"
+def test_version_linkage_yaml_loads_with_shared_model_loader(tmp_path: Path) -> None:
+    path = tmp_path / "version.yaml"
     path.write_text(
         yaml.safe_dump(
             {
-                "id": "order-sync",
-                "name": "订单联动",
-                "systems": [
-                    {"order": 1, "system_id": "shop-web", "version_id": "v1"},
-                    {"order": 2, "system_id": "warehouse-web", "version_id": "v2"},
+                "id": "v0.0.1",
+                "name": "v0.0.1",
+                "test_url": "https://shop.test",
+                "linked": True,
+                "linked_ends": [
+                    {"system_id": "shop-web", "version_id": "v0.0.1"},
+                    {"system_id": "warehouse-web", "version_id": "v0.0.1"},
                 ],
             }
         ),
         encoding="utf-8",
     )
 
-    scope = load_yaml_model(path, schemas.IntegrationScopeConfig)
+    version = load_yaml_model(path, VersionConfig)
 
-    assert scope.id == "order-sync"
-
-
-def test_integration_scope_template_and_contract_match_schema() -> None:
-    root = Path(__file__).parents[1]
-    template = (root / "workflow" / "context" / "template-integration-scope.yaml").read_text(
-        encoding="utf-8"
-    )
-    contract = (root / "src" / "agentest" / "schemas" / "requirement.md").read_text(
-        encoding="utf-8"
-    )
-
-    assert template.count("system_id:") >= 2
-    assert "`integration_scope.py`" in contract
+    assert version.id == "v0.0.1"
+    assert len(version.linked_ends) == 2

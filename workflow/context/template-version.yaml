@@ -1,6 +1,15 @@
 id: version-name
 name: 版本名称
+# 测试地址的唯一事实源；运行时上下文只引用本字段，不另存真值。
 test_url: ""
 description: ""
 # 仅填写本次 Version 与 System 默认环境不同的字段；不保存账号或密码。
 test_environment: null
+# 是否与其他端联动（多端联动的轻量标记）。默认 false。
+linked: false
+# linked=true 时在此登记联动的端；只引用系统/版本，不复制其地址或环境。
+# linked_ends:
+#   - system_id: other-system
+#     version_id: ""   # 省略表示引用该系统当前范围内的版本
+#     note: 联动说明
+linked_ends: []

@@ -38,14 +38,16 @@ docs/
     ├── project-requirement.md      # Project 目录契约
     ├── system.yaml                 # System 配置
     ├── system-requirement.md       # System 目录契约
-    ├── element-map.yaml            # Element Map 机器可读示例
+    ├── element-map.yaml            # Element Map 索引（对应真实 index.yaml）
+    ├── modules/                    # Element Map 模块目录
+    │   └── contacts.yaml           # 联系人模块（被 element-map.yaml 索引）
     ├── element-map.md              # Element Map 人工索引示例
     ├── memory.md                   # Memory 示例
     ├── version.yaml                # Version 配置
     ├── version-requirement.md      # Version 目录契约
     ├── source.md                   # 原始需求来源示例
     ├── requirement.md              # examples 目录契约
-    ├── 20260814_V2026.08.04_demo-web.md # 结构化需求示例
+    ├── 20260814_V2026.08.04_demo.md # 结构化需求示例
     ├── test-cases.md              # 测试用例平铺示例；真实位置见 Version/test-cases/test-cases.md
     ├── test-script.py              # 可重复执行的测试脚本示例
     └── report.md                   # 测试报告（建议版）示例
@@ -65,7 +67,8 @@ docs/
 - [system.yaml](examples/system.yaml)
 - [System 目录契约](examples/system-requirement.md)
 - [Element Map 示例](examples/element-map.md)
-- [Element Map YAML 示例](examples/element-map.yaml)
+- [Element Map 索引 YAML 示例](examples/element-map.yaml)
+- [Element Map 模块 YAML 示例](examples/modules/contacts.yaml)
 - [Memory 示例](examples/memory.md)
 
 ### Version
@@ -74,7 +77,7 @@ docs/
 - [Version 目录契约](examples/version-requirement.md)
 - [examples 目录契约](examples/requirement.md)
 - [原始需求来源](examples/source.md)
-- [结构化需求](examples/20260814_V2026.08.04_demo-web.md)
+- [结构化需求](examples/20260814_V2026.08.04_demo.md)
 - [测试用例](examples/test-cases.md)
 - [测试脚本](examples/test-script.py)
 - [测试报告（建议版）](examples/report.md)

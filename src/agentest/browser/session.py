@@ -1,6 +1,6 @@
 from typing import Any
 
-from agentest.browser.preflight import inspect_local_playwright
+from agentest.browser.preflight import ScreenMetrics, probe_environment
 from agentest.schemas.system import TestEnvironment
 
 
@@ -20,13 +20,15 @@ class BrowserSession:
         self._browser: Any = None
         self._context: Any = None
         self._main_page: Any = None
+        # 由浏览器内查询回填的实际屏幕指标（屏幕可用尺寸 + DPR）。
+        self.screen_metrics: ScreenMetrics | None = None
 
     def start(self) -> "BrowserSession":
         if self._browser is not None:
             return self
 
-        preflight = inspect_local_playwright()
-        if not preflight.python_playwright_available:
+        preflight = probe_environment()
+        if not preflight.ready:
             raise RuntimeError(preflight.install_prompt)
 
         from playwright.sync_api import sync_playwright
@@ -89,7 +91,34 @@ class BrowserSession:
         """Return the reusable primary page for the current test group."""
         if self._main_page is None:
             self._main_page = self.new_page()
+            self._probe_screen_metrics(self._main_page)
         return self._main_page
+
+    def _probe_screen_metrics(self, page: Any) -> None:
+        """用浏览器内查询记录真实屏幕可用尺寸与 DPR（零依赖，跨机器透明）。
+
+        真实最大化窗口的实际尺寸由 OS 决定、跨机器不同；这里先探测、再由 Agent 决定
+        是否需要调整窗口尺寸。查询失败不阻断测试。
+        """
+
+        try:
+            metrics = page.evaluate(
+                "() => ({availWidth: window.screen.availWidth, "
+                "availHeight: window.screen.availHeight, "
+                "devicePixelRatio: window.devicePixelRatio})"
+            )
+        except Exception:
+            return
+        if not isinstance(metrics, dict):
+            return
+        try:
+            self.screen_metrics = ScreenMetrics(
+                avail_width=int(metrics["availWidth"]),
+                avail_height=int(metrics["availHeight"]),
+                device_pixel_ratio=float(metrics["devicePixelRatio"]),
+            )
+        except (KeyError, TypeError, ValueError):
+            return
 
     @property
     def is_closed(self) -> bool:

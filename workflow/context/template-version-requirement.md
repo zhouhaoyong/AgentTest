@@ -6,7 +6,7 @@
 
 ## 允许内容
 
-- `version.yaml`：Version 元数据、可选测试地址和可选 Playwright 环境覆盖。
+- `version.yaml`：Version 元数据、测试地址（唯一事实源）、可选 Playwright 环境覆盖，以及是否端联动的轻量标记（`linked` / `linked_ends`）。
 - `requirements/`：原始来源、目录契约和按规范命名的结构化需求文档。
 - `test-cases/`：等待审核或已经审核的测试用例。
 - `test-scripts/`：可重复执行的测试脚本。

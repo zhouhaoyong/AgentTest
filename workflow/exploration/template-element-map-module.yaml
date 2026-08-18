@@ -1,11 +1,21 @@
+# Element Map 模块模板
+# 分级填写（省 token）：
+#   强制（缺了地图就不可用，校验会拦截）：
+#     模块 module_id / title；页面 id / url_pattern；元素 id / purpose 与 locator.primary.type / value。
+#   可选（按需填，不占强制成本，校验不拦截）：
+#     verified_version、viewport、verified_viewport、entry、name、states、text、
+#     locator.fallback、stability、action、expected_state、script_refs。
+#   可选字段只在"确实有助于稳定复用"时填写；不确定就留空或删除该行。
 module_id: <module-id>
 title: <模块名称>
+# 以下为可选增强字段，可删除。
 verified_version: <version-id>
 viewport: <例如 1920x1080>
 pages:
   - id: <page-id>
-    name: <页面名称>
     url_pattern: <已验证的 URL pattern>
+    # name / entry / states 为可选，可删除。
+    name: <页面名称>
     entry:
       - type: url | navigation | search
         value: <入口原文或 URL pattern>
@@ -15,14 +25,15 @@ pages:
     elements:
       - id: <element-id>
         purpose: <业务用途>
-        text: <被测系统原文，可为空>
         locator:
           primary:
             type: testid | role | label | css | text | xpath
             value: <原样定位串>
+          # fallback 及以下字段均为可选，可删除。
           fallback:
             - type: <定位类型>
               value: <原样定位串>
+        text: <被测系统原文，可为空>
         stability: <稳定性依据>
         action: <操作和触发方式>
         expected_state: <操作后页面、弹窗、标签页或下载变化>

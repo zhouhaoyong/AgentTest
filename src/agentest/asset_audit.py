@@ -2,7 +2,7 @@
 
 import re
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
 
 import yaml
@@ -10,7 +10,7 @@ import yaml
 from agentest.test_cases import scope_fingerprint_matches
 
 _TEST_CASE_HEADER = re.compile(r"^###\s+(TC-[0-9]+)\b", re.MULTILINE)
-_FIELD_NAMES = ("测试状态", "测试结果", "执行覆盖", "实际说明", "执行时间", "证据")
+_FIELD_NAMES = ("测试状态", "测试结果", "执行覆盖", "实际结果", "执行时间", "证据")
 _ALLOWED_STATUS = {"未测试", "已测试"}
 _ALLOWED_RESULTS = {"PASS", "FAIL", "BLOCKED", "NOT RUN"}
 _ALLOWED_COVERAGE = {"完整", "部分", "未执行"}
@@ -25,11 +25,14 @@ _SCRIPT_METADATA_PATTERNS = {
     "run_command": re.compile(r"(?i)(?:运行(?:方式|命令)|python(?:\.exe)?\s+-m\s+pytest)"),
 }
 _NO_EVIDENCE = {"", "无", "未执行", "未生成", "无证据"}
-_REPORT_ROW = re.compile(
-    r"^\|\s*(TC-[0-9]+)\s*\|[^|]*\|\s*([^|]*)\|\s*"
-    r"(完整|部分|未执行)\s*\|\s*(PASS|FAIL|BLOCKED|NOT RUN)\s*\|.*$",
-    re.MULTILINE,
-)
+# 报告结果表按表头名称解析，不依赖固定列顺序；模板调整列时校验仍然有效。
+_REPORT_COLUMNS = {
+    "id": "测试用例",
+    "script": "使用脚本",
+    "coverage": "执行覆盖",
+    "result": "本次结果",
+}
+_TEST_CASE_ID_PATTERN = re.compile(r"^TC-[0-9]+$")
 
 
 @dataclass(frozen=True)
@@ -191,18 +194,21 @@ def _audit_element_map_module(
             )
         )
         return
-    required = ("module_id", "title", "verified_version", "viewport", "pages")
-    if not isinstance(raw, dict) or any(not raw.get(field) for field in required):
+    # 分级校验（item 11）：只强校验"定位与识别所需"的核心字段，省 token。
+    # 强校验：模块 module_id/title；页面 id/url_pattern；元素 id/purpose 与 locator.primary。
+    # 不校验（可选、按需填）：stability、verified_version、verified_viewport、viewport、
+    # entry、fallback、action、expected_state、states、script_refs 等增强字段。
+    if not isinstance(raw, dict) or any(not raw.get(field) for field in ("module_id", "title")):
         issues.append(
             _issue(
                 "invalid_element_map_module",
                 system_root,
                 module_path,
-                "Element Map 模块缺少 module_id、title、verified_version、viewport 或 pages",
+                "Element Map 模块缺少 module_id 或 title",
             )
         )
         return
-    if not isinstance(raw["pages"], list) or not raw["pages"]:
+    if not isinstance(raw.get("pages"), list) or not raw["pages"]:
         issues.append(
             _issue(
                 "invalid_element_map_module",
@@ -214,18 +220,18 @@ def _audit_element_map_module(
         return
     for page in raw["pages"]:
         if not isinstance(page, dict) or any(
-            not page.get(field) for field in ("id", "url_pattern", "entry", "elements")
+            not page.get(field) for field in ("id", "url_pattern")
         ):
             issues.append(
                 _issue(
                     "incomplete_element_map_page",
                     system_root,
                     module_path,
-                    "页面缺少 id、url_pattern、entry 或 elements",
+                    "页面缺少 id 或 url_pattern",
                 )
             )
             continue
-        if not isinstance(page["elements"], list) or not page["elements"]:
+        if not isinstance(page.get("elements"), list) or not page["elements"]:
             issues.append(
                 _issue(
                     "incomplete_element_map_page",
@@ -236,21 +242,15 @@ def _audit_element_map_module(
             )
             continue
         for element in page["elements"]:
-            fields = (
-                "id",
-                "purpose",
-                "locator",
-                "stability",
-                "verified_version",
-                "verified_viewport",
-            )
-            if not isinstance(element, dict) or any(not element.get(field) for field in fields):
+            if not isinstance(element, dict) or any(
+                not element.get(field) for field in ("id", "purpose")
+            ):
                 issues.append(
                     _issue(
                         "incomplete_element_map_element",
                         system_root,
                         module_path,
-                        "元素缺少必要字段",
+                        "元素缺少 id 或 purpose",
                     )
                 )
                 continue
@@ -469,7 +469,7 @@ def _check_test_case_fields(
         )
     evidence = _field_value(block, "证据")
     if evidence and evidence not in _NO_EVIDENCE:
-        evidence_path = version_root / evidence.replace("/", "\\")
+        evidence_path = _resolve_asset_path(version_root, evidence)
         if not evidence_path.is_file():
             issues.append(
                 _issue(
@@ -488,7 +488,7 @@ def _check_report(
     issues: list[AssetAuditIssue],
 ) -> None:
     report_file = version_root / "report" / "report.md"
-    rows = _REPORT_ROW.findall(content)
+    rows = _parse_report_rows(content)
     report_ids = {test_case_id for test_case_id, _, _, _ in rows}
     if report_ids != test_case_ids:
         issues.append(
@@ -517,7 +517,8 @@ def _check_report(
     else:
         actual_counts = {result: 0 for result in _ALLOWED_RESULTS}
         for _, _, _, result in rows:
-            actual_counts[result] += 1
+            if result in actual_counts:
+                actual_counts[result] += 1
         expected = {key: summary[key] for key in _ALLOWED_RESULTS}
         if summary["total"] != len(rows) or expected != actual_counts:
             issues.append(
@@ -568,7 +569,7 @@ def _check_report(
             )
 
     for reference in re.findall(r"(?:evidence|test-scripts)/[^\s)`|]+", content):
-        reference_path = version_root / reference.replace("/", "\\")
+        reference_path = _resolve_asset_path(version_root, reference)
         if not reference_path.is_file():
             issues.append(
                 _issue(
@@ -662,6 +663,65 @@ def _check_file(
         issues.append(
             _issue(code, version_root, path, f"缺少 {path.relative_to(version_root).as_posix()}")
         )
+
+
+def _resolve_asset_path(version_root: Path, reference: str) -> Path:
+    """Resolve a POSIX-style relative asset reference under the version root.
+
+    资产文件里的路径一律用正斜杠书写；这里用 ``PurePosixPath`` 解析后再交给当前平台的
+    ``Path`` 拼接，Windows / macOS / Linux 行为一致，不再手动替换分隔符。
+    """
+
+    return version_root.joinpath(*PurePosixPath(reference.strip()).parts)
+
+
+def _split_table_row(line: str) -> list[str]:
+    stripped = line.strip()
+    if stripped.startswith("|"):
+        stripped = stripped[1:]
+    if stripped.endswith("|"):
+        stripped = stripped[:-1]
+    return [cell.strip() for cell in stripped.split("|")]
+
+
+def _parse_report_rows(content: str) -> list[tuple[str, str, str, str]]:
+    """Parse the report result table by header name (id, script, coverage, result)."""
+
+    lines = content.splitlines()
+    header_index: int | None = None
+    columns: dict[str, int] = {}
+    for index, line in enumerate(lines):
+        if "|" not in line:
+            continue
+        cells = _split_table_row(line)
+        if _REPORT_COLUMNS["id"] in cells and _REPORT_COLUMNS["result"] in cells:
+            columns = {key: cells.index(label) for key, label in _REPORT_COLUMNS.items()}
+            header_index = index
+            break
+    if header_index is None or len(columns) != len(_REPORT_COLUMNS):
+        return []
+
+    rows: list[tuple[str, str, str, str]] = []
+    for line in lines[header_index + 1 :]:
+        if "|" not in line:
+            break
+        cells = _split_table_row(line)
+        if not cells or all(set(cell) <= {"-", ":"} for cell in cells if cell):
+            continue
+        if len(cells) <= max(columns.values()):
+            continue
+        test_case_id = cells[columns["id"]].strip("`").strip()
+        if not _TEST_CASE_ID_PATTERN.match(test_case_id):
+            continue
+        rows.append(
+            (
+                test_case_id,
+                cells[columns["script"]],
+                cells[columns["coverage"]],
+                cells[columns["result"]],
+            )
+        )
+    return rows
 
 
 def _issue(code: str, version_root: Path, path: Path, message: str) -> AssetAuditIssue:
