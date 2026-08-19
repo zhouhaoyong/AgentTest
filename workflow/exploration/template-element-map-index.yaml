@@ -1,8 +1,26 @@
+# Element Map 索引：让 agent「不打开模块文件就能选对该读哪个」。
+# 选谁读谁：版本需求关键词 → 匹配 requirement_keywords / covers；或目标 URL → 匹配 routes。
+# 模块粒度：一个导航入口 / 独立页面 = 一个模块；子 Tab、弹窗、列表进模块文件的 pages/states，不下切成新模块。
 version: 1
+# global 为可选：只放真正全局共享的元素（全局导航壳、登录入口、公共弹窗组件），
+# 避免它们在每个模块文件里重复；业务元素一律进模块文件，不进 global。
+global:
+  - id: <global-element-id>
+    purpose: <全局元素用途，如 顶部导航 / 登录入口>
+    locator:
+      primary:
+        type: testid | role | label | css | text | xpath
+        value: <原样定位串>
 modules:
-  - id: <module-id>
+  - id: <module-id>                      # 模块唯一标识（module_id）
     file: modules/<module-id>.yaml
-    purpose: <该模块长期复用的目的>
-    entry:
-      - type: url | navigation | search
-        value: <已验证的入口原文或 URL pattern>
+    title: <模块名称>
+    # 以下为路由/收敛元数据，尽量填全，agent 靠它选文件。
+    routes:                              # 该模块覆盖的路由，做 URL 匹配
+      - "<#/url-pattern>"
+    entry: <怎么进，如 顶部导航"通讯录" / 深链 #/...>
+    covers:                              # 覆盖的功能点 / 页面
+      - <功能点>
+    requirement_keywords:                # 与版本需求做关键词匹配的锚点
+      - <需求关键词>
+    last_verified_version: <version-id>

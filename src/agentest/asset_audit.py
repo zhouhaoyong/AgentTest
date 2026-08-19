@@ -33,6 +33,34 @@ _REPORT_COLUMNS = {
     "result": "本次结果",
 }
 _TEST_CASE_ID_PATTERN = re.compile(r"^TC-[0-9]+$")
+# 定位质量校验（W1-3）：高精度识别占位 / 弱定位，避免误伤合法的中文 role/text 定位。
+_CJK_PATTERN = re.compile(r"[一-鿿]")
+# 模糊属性匹配：[class*=、[attr^=、[data-x$= 等；不误伤 [aria-label=（无 *^$~ 通配）。
+_FUZZY_ATTR_PATTERN = re.compile(r"\[[a-zA-Z_:-]+[*^$~]=")
+# text 定位夹带操作性说明括号（如 "订单标题（点击卡片标题区）"），疑为占位而非真实文本。
+_TEXT_INSTRUCTION_PATTERN = re.compile(
+    r"[（(][^）)]*(?:点击|选择|取|进入|见图|如下|或)[^）)]*[）)]"
+)
+# css / xpath / testid 定位串应为选择器而非中文自然语言；role / label / text 允许中文。
+_SELECTOR_LOCATOR_TYPES = {"css", "xpath", "testid"}
+# 合法定位类型（与 template-element-map-module.yaml 的 type 取值对齐）。
+_ALLOWED_LOCATOR_TYPES = {"testid", "role", "label", "css", "text", "xpath"}
+
+
+def _read_text(path: Path) -> str:
+    """读取文本，容忍 BOM 与非 UTF-8（Windows 常见 GBK）编码，避免因编码直接崩溃。
+
+    先按 ``utf-8-sig``（同时吃掉 BOM）解码，失败回退 ``gbk``；两者都不行时用替换字符兜底，
+    保证校验流程不因单个文件编码异常而整体中断。
+    """
+
+    data = path.read_bytes()
+    for encoding in ("utf-8-sig", "gbk"):
+        try:
+            return data.decode(encoding)
+        except UnicodeDecodeError:
+            continue
+    return data.decode("utf-8", errors="replace")
 
 
 @dataclass(frozen=True)
@@ -88,7 +116,7 @@ def audit_system_assets(system_root: Path) -> list[AssetAuditIssue]:
                 )
             )
         for module_file in module_files:
-            content = module_file.read_text(encoding="utf-8")
+            content = _read_text(module_file)
             missing_headings = [
                 heading
                 for heading in _MEMORY_HEADINGS
@@ -123,7 +151,7 @@ def _audit_element_map(
     issues: list[AssetAuditIssue],
 ) -> None:
     try:
-        raw: Any = yaml.safe_load(index_path.read_text(encoding="utf-8"))
+        raw: Any = yaml.safe_load(_read_text(index_path))
     except yaml.YAMLError:
         issues.append(
             _issue(
@@ -149,17 +177,19 @@ def _audit_element_map(
         )
         return
 
+    _audit_element_map_global(system_root, index_path, raw.get("global"), issues)
+
     for module in raw["modules"]:
         if not isinstance(module, dict) or not all(
             isinstance(module.get(field), str) and module[field].strip()
-            for field in ("id", "file", "purpose")
+            for field in ("id", "file")
         ):
             issues.append(
                 _issue(
                     "invalid_element_map_index",
                     system_root,
                     index_path,
-                    "Element Map index 的模块必须包含 id、file、purpose",
+                    "Element Map index 的模块必须包含 id、file",
                 )
             )
             continue
@@ -183,7 +213,7 @@ def _audit_element_map_module(
     issues: list[AssetAuditIssue],
 ) -> None:
     try:
-        raw: Any = yaml.safe_load(module_path.read_text(encoding="utf-8"))
+        raw: Any = yaml.safe_load(_read_text(module_path))
     except yaml.YAMLError:
         issues.append(
             _issue(
@@ -208,6 +238,16 @@ def _audit_element_map_module(
             )
         )
         return
+    # 验证视口必填：响应式布局随视口变化，缺了它结论无法复现（#5 统一为必填）。
+    if not (isinstance(raw.get("viewport"), str) and raw["viewport"].strip()):
+        issues.append(
+            _issue(
+                "missing_element_map_viewport",
+                system_root,
+                module_path,
+                "Element Map 模块缺少 viewport（验证视口，必填）",
+            )
+        )
     if not isinstance(raw.get("pages"), list) or not raw["pages"]:
         issues.append(
             _issue(
@@ -218,6 +258,7 @@ def _audit_element_map_module(
             )
         )
         return
+    element_ids: list[str] = []
     for page in raw["pages"]:
         if not isinstance(page, dict) or any(
             not page.get(field) for field in ("id", "url_pattern")
@@ -254,7 +295,11 @@ def _audit_element_map_module(
                     )
                 )
                 continue
-            locator = element["locator"]
+            element_ids.append(element["id"])
+            # unverified 存根（"观察到、未点击验证"）只登记不强校验定位，复用前需补验。
+            if element.get("unverified"):
+                continue
+            locator = element.get("locator")
             if not isinstance(locator, dict) or not isinstance(locator.get("primary"), dict):
                 issues.append(
                     _issue(
@@ -275,6 +320,105 @@ def _audit_element_map_module(
                         "locator.primary 缺少 type 或 value",
                     )
                 )
+                continue
+            _check_locator_quality(system_root, module_path, primary, issues)
+
+    duplicate_ids = sorted({eid for eid in element_ids if element_ids.count(eid) > 1})
+    if duplicate_ids:
+        issues.append(
+            _issue(
+                "duplicate_element_id",
+                system_root,
+                module_path,
+                f"Element Map 模块内元素 id 重复：{', '.join(duplicate_ids)}",
+            )
+        )
+
+
+def _audit_element_map_global(
+    system_root: Path,
+    index_path: Path,
+    raw_global: Any,
+    issues: list[AssetAuditIssue],
+) -> None:
+    """校验索引可选的 global 段（全局导航壳 / 登录入口 / 公共弹窗组件）。"""
+
+    if raw_global is None:
+        return
+    if not isinstance(raw_global, list):
+        issues.append(
+            _issue(
+                "invalid_element_map_index",
+                system_root,
+                index_path,
+                "Element Map index 的 global 必须是列表",
+            )
+        )
+        return
+    for element in raw_global:
+        if not isinstance(element, dict) or not element.get("id"):
+            issues.append(
+                _issue(
+                    "invalid_element_map_index",
+                    system_root,
+                    index_path,
+                    "global 元素必须包含 id",
+                )
+            )
+            continue
+        locator = element.get("locator")
+        if isinstance(locator, dict) and isinstance(locator.get("primary"), dict):
+            _check_locator_quality(system_root, index_path, locator["primary"], issues)
+
+
+def _check_locator_quality(
+    system_root: Path,
+    path: Path,
+    primary: dict[str, Any],
+    issues: list[AssetAuditIssue],
+) -> None:
+    """标记疑似占位 / 数据派生 / 模糊匹配的弱定位（W1-3）。高精度，避免误伤合法中文 role/text。"""
+
+    value = primary.get("value")
+    if not isinstance(value, str) or not value.strip():
+        return
+    loc_type = primary.get("type")
+    if loc_type not in _ALLOWED_LOCATOR_TYPES:
+        issues.append(
+            _issue(
+                "invalid_locator_type",
+                system_root,
+                path,
+                f"定位类型 {loc_type!r} 非法，应为 testid/role/label/css/text/xpath 之一",
+            )
+        )
+    if _FUZZY_ATTR_PATTERN.search(value):
+        issues.append(
+            _issue(
+                "weak_element_locator",
+                system_root,
+                path,
+                f"定位使用模糊属性匹配（如 [class*=]），应改用稳定属性或移入 fallback：{value}",
+            )
+        )
+    if loc_type in _SELECTOR_LOCATOR_TYPES and _CJK_PATTERN.search(value):
+        issues.append(
+            _issue(
+                "weak_element_locator",
+                system_root,
+                path,
+                f"{loc_type} 定位串含中文，疑为占位 / 自然语言而非选择器：{value}",
+            )
+        )
+    if loc_type == "text" and _TEXT_INSTRUCTION_PATTERN.search(value):
+        issues.append(
+            _issue(
+                "weak_element_locator",
+                system_root,
+                path,
+                f"text 定位含操作性说明括号，疑为占位而非真实可见文本：{value}",
+            )
+        )
 
 
 def audit_version_assets(
@@ -324,9 +468,7 @@ def audit_version_assets(
         version_root, test_cases_dir / "requirement.md", "missing_test_cases_contract", issues
     )
 
-    test_case_content = (
-        test_cases_file.read_text(encoding="utf-8") if test_cases_file.is_file() else ""
-    )
+    test_case_content = _read_text(test_cases_file) if test_cases_file.is_file() else ""
     test_case_blocks = _parse_test_cases(test_case_content)
     test_case_ids = set(test_case_blocks)
     _check_duplicate_ids(version_root, test_case_content, issues)
@@ -364,7 +506,7 @@ def audit_version_assets(
         _check_file(version_root, report_dir / "requirement.md", "missing_report_contract", issues)
         _check_file(version_root, report_file, "missing_report", issues)
         if report_file.is_file():
-            report_content = report_file.read_text(encoding="utf-8")
+            report_content = _read_text(report_file)
             _check_report(version_root, report_content, test_case_ids, issues)
 
     if state_path is not None and state_path.is_file():
@@ -379,7 +521,7 @@ def _check_test_scripts(
     issues: list[AssetAuditIssue],
 ) -> None:
     for script_path in sorted(scripts_dir.glob("*.py")):
-        content = script_path.read_text(encoding="utf-8")
+        content = _read_text(script_path)
         missing = [
             name
             for name, pattern in _SCRIPT_METADATA_PATTERNS.items()
@@ -488,7 +630,17 @@ def _check_report(
     issues: list[AssetAuditIssue],
 ) -> None:
     report_file = version_root / "report" / "report.md"
-    rows = _parse_report_rows(content)
+    rows, missing_columns = _parse_report_rows(content)
+    if missing_columns:
+        labels = "、".join(_REPORT_COLUMNS[key] for key in sorted(missing_columns))
+        issues.append(
+            _issue(
+                "incomplete_report_table",
+                version_root,
+                report_file,
+                f"报告结果表缺少列：{labels}",
+            )
+        )
     report_ids = {test_case_id for test_case_id, _, _, _ in rows}
     if report_ids != test_case_ids:
         issues.append(
@@ -543,13 +695,14 @@ def _check_report(
     # Re-read the Version test-case file so the report cannot silently change result semantics.
     test_cases_file = version_root / "test-cases" / "test-cases.md"
     test_case_blocks = _parse_test_cases(
-        test_cases_file.read_text(encoding="utf-8") if test_cases_file.is_file() else ""
+        _read_text(test_cases_file) if test_cases_file.is_file() else ""
     )
     for test_case_id, _, coverage, result in rows:
         block = test_case_blocks.get(test_case_id, "")
         expected_coverage = _field_value(block, "执行覆盖")
         expected_result = _field_value(block, "测试结果")
-        if expected_coverage and coverage != expected_coverage:
+        coverage_known = "coverage" not in missing_columns
+        if coverage_known and expected_coverage and coverage != expected_coverage:
             issues.append(
                 _issue(
                     "report_execution_coverage_mismatch",
@@ -568,8 +721,10 @@ def _check_report(
                 )
             )
 
-    for reference in re.findall(r"(?:evidence|test-scripts)/[^\s)`|]+", content):
-        reference_path = _resolve_asset_path(version_root, reference)
+    # 允许文件名含空格：只在 Markdown 链接右括号 / 表格竖线 / 反引号 / 换行处截断，
+    # 不再遇到空格就切断，避免把 "evidence/我的 证据.png" 误判成坏路径。
+    for reference in re.findall(r"(?:evidence|test-scripts)/[^)`|\n]+", content):
+        reference_path = _resolve_asset_path(version_root, reference.strip())
         if not reference_path.is_file():
             issues.append(
                 _issue(
@@ -589,7 +744,7 @@ def _check_state(
     issues: list[AssetAuditIssue],
 ) -> None:
     try:
-        raw: Any = yaml.safe_load(state_path.read_text(encoding="utf-8")) or {}
+        raw: Any = yaml.safe_load(_read_text(state_path)) or {}
     except yaml.YAMLError:
         issues.append(
             _issue("invalid_state_yaml", version_root, state_path, "state.yaml 不是有效 YAML")
@@ -624,6 +779,86 @@ def _check_state(
         issues.append(
             _issue(
                 "fingerprint_mismatch", version_root, state_path, "测试用例范围指纹与当前文件不一致"
+            )
+        )
+
+    _check_test_case_results(version_root, test_case_ids, completed, raw, state_path, issues)
+
+
+# 逐用例结果的终态取值（与 schemas.workspace.TestCaseOutcome 对齐）。
+_TERMINAL_OUTCOMES = {"passed", "failed", "blocked"}
+_VALID_OUTCOMES = _TERMINAL_OUTCOMES | {"not_run"}
+
+
+def _check_test_case_results(
+    version_root: Path,
+    test_case_ids: set[str],
+    completed: Any,
+    raw: dict[str, Any],
+    state_path: Path,
+    issues: list[AssetAuditIssue],
+) -> None:
+    """可选字段 test_case_results 的一致性校验（不写不报错，向后兼容）。"""
+    results = raw.get("test_case_results")
+    if results is None:
+        return
+    if not isinstance(results, dict):
+        issues.append(
+            _issue(
+                "invalid_test_case_results",
+                version_root,
+                state_path,
+                "state.yaml 的 test_case_results 必须是 用例ID -> 结果 的对象",
+            )
+        )
+        return
+
+    # key 必须在当前用例范围内。
+    if set(results) - test_case_ids:
+        issues.append(
+            _issue(
+                "unknown_result_test_case",
+                version_root,
+                state_path,
+                "test_case_results 含当前范围外的测试用例 ID",
+            )
+        )
+
+    # 结果取值合法性。
+    if any(outcome not in _VALID_OUTCOMES for outcome in results.values()):
+        issues.append(
+            _issue(
+                "invalid_test_case_outcome",
+                version_root,
+                state_path,
+                "test_case_results 含非法结果值（应为 passed/failed/blocked/not_run）",
+            )
+        )
+
+    completed_set = set(completed) if isinstance(completed, list) else set()
+
+    # completed 里的 id 若出现在 results，其结果必须是终态之一（不能还是 not_run）。
+    if any(results.get(cid) == "not_run" for cid in completed_set if cid in results):
+        issues.append(
+            _issue(
+                "completed_result_not_terminal",
+                version_root,
+                state_path,
+                "已完成用例在 test_case_results 里仍标 not_run，进度与结果不一致",
+            )
+        )
+
+    # 判 passed 的用例，其 id 应已在 completed（出过结论才谈得上通过）。
+    if any(
+        outcome == "passed" and cid not in completed_set
+        for cid, outcome in results.items()
+    ):
+        issues.append(
+            _issue(
+                "passed_result_not_completed",
+                version_root,
+                state_path,
+                "test_case_results 判 passed 的用例未记入 completed_test_case_ids",
             )
         )
 
@@ -668,11 +903,13 @@ def _check_file(
 def _resolve_asset_path(version_root: Path, reference: str) -> Path:
     """Resolve a POSIX-style relative asset reference under the version root.
 
-    资产文件里的路径一律用正斜杠书写；这里用 ``PurePosixPath`` 解析后再交给当前平台的
-    ``Path`` 拼接，Windows / macOS / Linux 行为一致，不再手动替换分隔符。
+    资产文件里的路径应用正斜杠书写；为兼容偶发的 Windows 反斜杠写法，这里先把反斜杠
+    归一为正斜杠，再用 ``PurePosixPath`` 解析后交给当前平台的 ``Path`` 拼接，
+    Windows / macOS / Linux 行为一致。
     """
 
-    return version_root.joinpath(*PurePosixPath(reference.strip()).parts)
+    normalized = reference.strip().replace("\\", "/")
+    return version_root.joinpath(*PurePosixPath(normalized).parts)
 
 
 def _split_table_row(line: str) -> list[str]:
@@ -684,8 +921,13 @@ def _split_table_row(line: str) -> list[str]:
     return [cell.strip() for cell in stripped.split("|")]
 
 
-def _parse_report_rows(content: str) -> list[tuple[str, str, str, str]]:
-    """Parse the report result table by header name (id, script, coverage, result)."""
+def _parse_report_rows(content: str) -> tuple[list[tuple[str, str, str, str]], set[str]]:
+    """Parse the report result table by header name.
+
+    返回 ``(rows, missing_columns)``。表头只要同时含"测试用例"与"本次结果"两列即认定为结果表；
+    其余列（使用脚本 / 执行覆盖）缺失时不再抛 ValueError，而是记入 ``missing_columns``，
+    对应字段以空串占位，交由调用方降级处理，保证少列的报告也能得到明确提示而非崩溃。
+    """
 
     lines = content.splitlines()
     header_index: int | None = None
@@ -695,33 +937,40 @@ def _parse_report_rows(content: str) -> list[tuple[str, str, str, str]]:
             continue
         cells = _split_table_row(line)
         if _REPORT_COLUMNS["id"] in cells and _REPORT_COLUMNS["result"] in cells:
-            columns = {key: cells.index(label) for key, label in _REPORT_COLUMNS.items()}
+            columns = {
+                key: cells.index(label)
+                for key, label in _REPORT_COLUMNS.items()
+                if label in cells
+            }
             header_index = index
             break
-    if header_index is None or len(columns) != len(_REPORT_COLUMNS):
-        return []
+    if header_index is None:
+        return [], set()
+    missing = {key for key in _REPORT_COLUMNS if key not in columns}
 
     rows: list[tuple[str, str, str, str]] = []
+    max_index = max(columns.values())
     for line in lines[header_index + 1 :]:
         if "|" not in line:
             break
         cells = _split_table_row(line)
         if not cells or all(set(cell) <= {"-", ":"} for cell in cells if cell):
             continue
-        if len(cells) <= max(columns.values()):
+        if len(cells) <= max_index:
             continue
-        test_case_id = cells[columns["id"]].strip("`").strip()
+        row = {key: cells[idx] for key, idx in columns.items()}
+        test_case_id = row["id"].strip("`").strip()
         if not _TEST_CASE_ID_PATTERN.match(test_case_id):
             continue
         rows.append(
             (
                 test_case_id,
-                cells[columns["script"]],
-                cells[columns["coverage"]],
-                cells[columns["result"]],
+                row.get("script", ""),
+                row.get("coverage", ""),
+                row.get("result", ""),
             )
         )
-    return rows
+    return rows, missing
 
 
 def _issue(code: str, version_root: Path, path: Path, message: str) -> AssetAuditIssue:

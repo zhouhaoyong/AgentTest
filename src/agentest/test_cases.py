@@ -17,9 +17,17 @@ _HEADING_PATTERN = re.compile(r"^\s*(#{1,6})\s*(.*?)\s*$")
 _INLINE_FIELD_PATTERN = re.compile(r"^\s*(?:[-*]\s*)?([^：:]+?)\s*[:：]\s*(.*)$")
 
 # 参与批准范围的字段（行内形式）。
-_SCOPE_INLINE_FIELDS = {"关联需求", "测试维度", "前置条件", "测试步骤", "预期结果"}
+_SCOPE_INLINE_FIELDS = {
+    "关联需求",
+    "测试维度",
+    "前置条件",
+    "测试步骤",
+    "预期结果",
+    "测试数据",
+    "数据校对",
+}
 # 参与批准范围的小节标题关键词（#### 形式）。
-_SCOPE_SECTION_KEYWORDS = ("前置条件", "测试步骤", "预期结果")
+_SCOPE_SECTION_KEYWORDS = ("前置条件", "测试步骤", "预期结果", "测试数据", "数据校对")
 # 不参与批准范围的行内字段：执行类 + 描述类。
 _NON_SCOPE_INLINE_FIELDS = {
     "测试状态",

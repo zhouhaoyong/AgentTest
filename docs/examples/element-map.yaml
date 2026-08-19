@@ -1,8 +1,16 @@
 version: 1
+# global 可选：仅放全局共享元素（全局导航壳 / 登录入口 / 公共弹窗）。
 modules:
   - id: contacts
     file: modules/contacts.yaml
-    purpose: 联系人列表和新增流程的可复用页面元素
-    entry:
-      - type: url
-        value: /contacts
+    title: 联系人
+    routes:
+      - /contacts
+    entry: 顶部导航"联系人"
+    covers:
+      - 联系人列表
+      - 新增联系人
+    requirement_keywords:
+      - 联系人
+      - 新增
+    last_verified_version: 2026.08.04

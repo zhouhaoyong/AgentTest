@@ -22,6 +22,7 @@ def test_major_repository_directories_have_requirement_contracts() -> None:
         root / "src",
         root / "src" / "agentest",
         root / "src" / "agentest" / "browser",
+        root / "src" / "agentest" / "exploration",
         root / "src" / "agentest" / "schemas",
         root / "projects",
         root / "tests",

@@ -11,6 +11,7 @@ from agentest.schemas.system import (
 )
 from agentest.schemas.version import LinkedEnd, VersionConfig
 from agentest.schemas.workspace import (
+    TestCaseOutcome,
     WorkflowPhase,
     WorkspaceContext,
     WorkspaceState,
@@ -29,4 +30,5 @@ __all__ = [
     "WorkspaceContext",
     "WorkspaceState",
     "WorkflowPhase",
+    "TestCaseOutcome",
 ]

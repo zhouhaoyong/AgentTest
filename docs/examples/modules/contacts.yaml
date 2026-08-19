@@ -1,6 +1,6 @@
 module_id: contacts
 title: 联系人
-verified_version: v0.0.1
+verified_version: 2026.08.04
 viewport: 1920x1080
 pages:
   - id: contacts-list
@@ -21,13 +21,18 @@ pages:
             value: contact-add
           fallback:
             - type: role
-              value: button[name="添加联系人"]
+              value: role=button[name="添加联系人"]
         text: 添加联系人
         stability: data-testid
         action: 点击后打开新增联系人表单
         expected_state: 当前页打开联系人表单（/contacts/new）
-        verified_version: v0.0.1
+        verified_version: 2026.08.04
         verified_viewport: 1920x1080
+      # 只观察到、未实操验证的存根：标 unverified，可暂缺 locator，校验跳过其定位检查；
+      # 正式测试引用前须先复核转正（见 testing/prompt.md）。
+      - id: contact-export
+        purpose: 导出联系人（探索时仅在列表页观察到，未点击验证）
+        unverified: true
   - id: contacts-form
     url_pattern: /contacts/new
     name: 联系人表单
@@ -48,5 +53,5 @@ pages:
         stability: 表单 label / name
         action: 输入联系人姓名
         expected_state: 输入框回显所填姓名，可继续保存
-        verified_version: v0.0.1
+        verified_version: 2026.08.04
         verified_viewport: 1920x1080

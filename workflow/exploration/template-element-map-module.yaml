@@ -1,16 +1,26 @@
 # Element Map 模块模板
 # 分级填写（省 token）：
 #   强制（缺了地图就不可用，校验会拦截）：
-#     模块 module_id / title；页面 id / url_pattern；元素 id / purpose 与 locator.primary.type / value。
+#     模块 module_id / title / viewport（验证视口）；页面 id / url_pattern；
+#     元素 id / purpose 与 locator.primary.type / value。
 #   可选（按需填，不占强制成本，校验不拦截）：
-#     verified_version、viewport、verified_viewport、entry、name、states、text、
+#     verified_version、verified_viewport、entry、name、states、text、
 #     locator.fallback、stability、action、expected_state、script_refs。
 #   可选字段只在"确实有助于稳定复用"时填写；不确定就留空或删除该行。
+#
+# 结构 vs 数据（定位质量，校验会对弱定位告警 weak_element_locator）：
+#   - 只定位结构（地标 / 容器 / 行模板 / 控件），用稳定属性；业务数据（订单号 / 金额 / 数量 / 用户名）
+#     靠运行时参数在结构内筛选，不写进 locator。判据：换一组数据这条定位是否仍成立。
+#   - 定位来源分级：testid / role / aria-label / 稳定语义 class = 结构，可作主定位；
+#     回显文本值 / 动态计数 / 状态角标 = 数据，不作主定位；"稳定文本"仅在无更好锚点时降权用。
+#   - 禁止：css/xpath/testid 里写中文自然语言、[class*=/^=/$=/~=] 模糊匹配、text 夹带"（点击…）"操作性说明——均判为弱定位。
+#   - unverified: true —— 只观察到未实操验证、或疑似数据派生的元素标此位待复核；
+#     仍须写 id 与 purpose，但可暂缺 locator，校验会跳过其定位检查、不阻断沉淀。
 module_id: <module-id>
 title: <模块名称>
+viewport: <例如 1920x1080>   # 必填：验证视口，响应式布局随它变化，缺了结论无法复现。
 # 以下为可选增强字段，可删除。
 verified_version: <version-id>
-viewport: <例如 1920x1080>
 pages:
   - id: <page-id>
     url_pattern: <已验证的 URL pattern>
@@ -41,3 +51,7 @@ pages:
         verified_viewport: <例如 1920x1080>
         script_refs:
           - <test-script-file-or-test-id>
+      # 只观察到、未实操验证的存根：标 unverified，可暂缺 locator，校验跳过其定位检查。
+      - id: <observed-only-element-id>
+        purpose: <业务用途>
+        unverified: true
