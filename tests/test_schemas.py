@@ -223,6 +223,11 @@ def test_workspace_context_tracks_only_confirmed_scope() -> None:
     assert context.version_id == "v0.0.1"
 
 
+def test_workspace_context_requires_current_version() -> None:
+    with pytest.raises(ValidationError):
+        WorkspaceContext(project_id="store", system_id="shop-web")
+
+
 def test_workspace_context_rejects_removed_integration_scope_field() -> None:
     # 联动已改为版本内的轻量标记；上下文不再持有 integration_scope_id / test_url。
     with pytest.raises(ValidationError):
@@ -244,7 +249,7 @@ def test_version_declares_lightweight_linked_ends() -> None:
 
     assert version.linked is True
     assert [end.system_id for end in version.linked_ends] == ["shop-web", "warehouse-web"]
-    # 省略 version_id 表示引用该系统当前范围内的版本。
+    # Schema 保留草稿兼容；正式测试启动闸门会阻止省略 version_id。
     assert version.linked_ends[1].version_id == ""
 
 

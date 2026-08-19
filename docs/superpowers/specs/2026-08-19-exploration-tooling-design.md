@@ -47,7 +47,7 @@ API：`ExplorationBudget(...)`；`start_entry(key)` / `record_attempt(key, *, su
 区分"执行过 vs 通过 vs 阻塞"，替代单一 `completed` 语义，且**向后兼容**：
 
 - `WorkspaceState` 增可选 `test_case_results: dict[str, TestCaseOutcome]`，`TestCaseOutcome ∈ passed/failed/blocked/not_run`（"executed" 用 `completed_test_case_ids` 表示"已出结论"，不再另设枚举，避免与进度字段语义打架）。
-- 校验（`asset_audit._check_state`）：results 的 key 必须在当前用例范围内；`completed_test_case_ids` 里的 id 若出现在 results，其结果必须是终态之一；results 里判 `passed` 的用例其 id 应在 `completed`。全部**可选**——不写 results 不报错，保持既有断点续跑与指纹逻辑不变。
+- 校验（`asset_audit._check_state`）：results 的 key 必须在当前用例范围内；`completed_test_case_ids` 里的 id 若出现在 results，其结果必须是终态之一；results 里判 `passed` 的用例其 id 应在 `completed`。测试尚未开始、`completed_test_case_ids` 为空时可不写 results；只要已有完成用例，就必须同步写入对应 results，避免用单一 completed 语义代替结果。
 
 ## 测试策略
 
@@ -58,7 +58,7 @@ API：`ExplorationBudget(...)`；`start_entry(key)` / `record_attempt(key, *, su
 
 ## 与第一波的衔接（提示词接线）
 
-- `testing/prompt.md`：`state.yaml` 可选记 `test_case_results` 区分通过/阻塞。
+- `testing/prompt.md`：`state.yaml` 在用例出结论时记录 `test_case_results`，区分通过/失败/阻塞/未运行。
 - 说明：W2-1/2/3 三个探索工具当前为纯库存、未接入任何提示词（避免每次测试多读软约束白耗 token，将来上 harness 再启用）；W2-5 已接入 `asset_audit`。
 
 ## 撤案记录

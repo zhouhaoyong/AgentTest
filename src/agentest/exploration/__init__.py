@@ -13,6 +13,7 @@ from agentest.exploration.discovery import (
     resolve_candidate,
 )
 from agentest.exploration.scoring import LocatorScore, score_locator
+from agentest.exploration.session import ExplorationSession
 
 __all__ = [
     "ExplorationBudget",
@@ -24,4 +25,5 @@ __all__ = [
     "Discovery",
     "discover",
     "resolve_candidate",
+    "ExplorationSession",
 ]

@@ -1,6 +1,7 @@
 id: demo
 name: 示例 Web 系统
 type: web
+# 仅作兼容 / 历史说明；正式测试只使用 version.yaml 的 test_url。
 base_url: ""
 description: 仅用于说明 System 结构
 test_environment:

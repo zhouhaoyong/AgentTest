@@ -76,10 +76,10 @@
 - **文件**：`workflow/exploration/prompt.md`、`workflow/testing/prompt.md`、`workflow/regression/prompt.md`（必读资料段）。
 - **改法**：明确"系统级资产（元素地图/Memory）跨版本复用、版本级资产（用例/报告）按版本隔离"；回归/新版本按 index 只加载相关模块，不整包灌；日常靠"结论先行"摘要读报告。
 
-### W1-10（可选）state.yaml 语义澄清（Q4）
+### W1-10 state.yaml 语义澄清（Q4，已完成）
 
 - **文件**：`workflow/testing/prompt.md`、`workflow/testing/rules.md`、（如落到数据模型）`src/agentest/asset_audit.py._check_state` + 测试。
-- **改法**：区分 `executed`/`passed`/`blocked`，不用单一 `completed` 概括"执行过 vs 通过/可复现"。**先做提示词澄清**（低风险）；改数据模型字段放到第二波与工具一起，避免破坏现有指纹/续跑逻辑。
+- **改法**：区分 `executed`/`passed`/`failed`/`blocked`/`not_run`，不用单一 `completed` 概括"执行过 vs 通过/可复现"。测试尚未开始时可省略结果映射；只要有已完成用例，就必须同步填写 `test_case_results`，并由 `asset_audit` 校验结果映射和进度一致。
 
 ---
 
@@ -99,7 +99,9 @@
 ### W2-4 ~~固定入口命令 / MCP 降授权（Q10）~~ 已永久撤案（2026-08-19）
 AgentTest 由自然语言/提示词驱动，塞命令行入口 / Skill / MCP / settings 白名单均背离范式，全部否决。授权弹窗问题（Q10）保持现状不处理。**后续不要再提议做 CLI / 固定入口 / 降授权白名单。**
 
-### W2-5 state.yaml 执行语义数据模型化（Q4 承接 W1-10）
+### W2-5 state.yaml 执行语义数据模型化（Q4 承接 W1-10，已完成）
+
+- **落地**：`WorkspaceState`、`asset_audit._check_state` 和测试覆盖已统一使用 `passed`/`failed`/`blocked`/`not_run`；已完成用例缺少结果、终态结果未记入进度都会被拦截。
 
 ---
 

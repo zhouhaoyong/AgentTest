@@ -5,13 +5,14 @@ from agentest.schemas.system import TestEnvironmentOverride
 
 
 class LinkedEnd(AssetModel):
-    """多端联动的轻量引用：只指向另一个端（系统 + 可选版本），不复制其地址或环境。
+    """多端联动的轻量引用：只指向另一个端（系统 + 版本），不复制其地址或环境。
 
+    草稿兼容场景允许暂时省略 version_id；正式测试启动闸门会要求明确 Version。
     被引用端的测试地址仍以其自身 version.yaml 为唯一事实源；这里只登记"和谁联动"。
     """
 
     system_id: str
-    # 省略 version_id 表示引用该系统当前范围内的版本。
+    # Schema 为兼容草稿允许空值；正式联动必须经过启动闸门并明确 Version。
     version_id: str = ""
     note: str = ""
 

@@ -25,6 +25,7 @@ Project
         ├── Requirement
         ├── Test Cases
         ├── Test Scripts
+        ├── Evidence
         └── Test Report
 ```
 
@@ -50,6 +51,7 @@ docs/
     ├── 20260814_V2026.08.04_demo.md # 结构化需求示例
     ├── test-cases.md              # 测试用例平铺示例；真实位置见 Version/test-cases/test-cases.md
     ├── test-script.py              # 可重复执行的测试脚本示例
+    ├── evidence-requirement.md     # evidence/ 目录契约示例
     └── report.md                   # 测试报告（建议版）示例
 ```
 
@@ -80,10 +82,12 @@ docs/
 - [结构化需求](examples/20260814_V2026.08.04_demo.md)
 - [测试用例](examples/test-cases.md)
 - [测试脚本](examples/test-script.py)
+- [证据目录契约](examples/evidence-requirement.md)
 - [测试报告（建议版）](examples/report.md)
 
 ## 注意事项
 
 - Demo 不保存真实需求、账号、密码、Token、Cookie 或正式测试结果。
 - Demo 中的 Version 测试脚本只展示结构，不保证可以直接连接真实系统执行。
+- 真实 Version 的 `evidence/` 目录也必须保留目录契约；只有发生异常或需要支持结论时才保存证据。
 - Agent 开始真实测试前，仍需读取目标 Project、System 和 Version 的目录契约。

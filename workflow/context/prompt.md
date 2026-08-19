@@ -19,8 +19,8 @@
 3. 生成 ID 时遵守现有约束：Project、System、Version ID 只能使用目录安全字符（`^[A-Za-z0-9._-]+$`）。System 类型由 `type` 字段承载，ID 不强制带类型后缀；用户想区分同业务的不同端时，自行用不同名字即可（如 `gumai-pc`、`gumai-h5`）。任何文件名和目录名都不得出现中文或空格。Version 是测试资产目录，不是 Git 分支。
 4. 征询版本号时给出两种示例形式，例如 `2026.08.01`（年.月.日）或 `v1.0.0`（语义化版本）。若用户给的版本号含中文、空格或非法字符，帮其归一成目录安全串并展示确认，不自行硬塞。
 5. 角色、权限、测试账号和具体业务测试数据不是所有需求都需要，但一旦原始需求涉及它们，就在首轮“待确认需求”中确认可用性和前置条件；不索要账号密码、Token、Cookie 或 Storage State。
-6. 优先复用不冲突的 `.agentest/` 与既有 YAML 事实；已有 System 必须复用，不能静默覆盖。
-7. 从数据安全、数据关联和写操作风险出发，主动建议用户使用测试环境，并确认每个测试地址不是未经用户确认的生产环境；System 配置保存默认环境，Version 仅保存差异字段。多端联动只在参与联动的 `version.yaml` 用 `linked_ends` 登记已确认的对端 System / Version，不复制其地址。
+6. 优先复用不冲突的 `.agentest/` 与既有 YAML 事实；已有 System 必须复用，不能静默覆盖。创建上下文时按资产映射补齐 Project、System、Version、`systems/`、`versions/` 和实际创建的资产目录契约；`.agentest/context.yaml` 只记录当前定位信息，测试地址从当前 Version 的 `version.yaml` 读取。
+7. 从数据安全、数据关联和写操作风险出发，主动建议用户使用测试环境，并确认每个测试地址不是未经用户确认的生产环境；当前 Version 的 `test_url` 是唯一可执行地址，地址为空时不能启动正式测试，System 的 `base_url` 不得作为回退地址。多端联动只在参与联动的 `version.yaml` 用 `linked_ends` 登记已确认且写明 Version 的对端 System / Version，不复制其地址。
 
 ## 首轮提问方式（业务语言）
 

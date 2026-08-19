@@ -1,4 +1,47 @@
-from agentest.test_cases import fingerprint_test_case_scope, scope_fingerprint_matches
+from agentest.test_cases import (
+    fingerprint_test_case_scope,
+    parse_key_coverage_constraints,
+    scope_fingerprint_matches,
+)
+
+_KEY_COVERAGE = """### 关键覆盖约束
+
+#### KC-001 至少验证两个订单列表
+- 用户要求：至少验证两个订单列表。
+- 承接用例：TC-001、TC-002
+- 完成标准：两个用例均完整执行且 PASS。
+- 当前状态：未开始
+"""
+
+
+def test_key_coverage_scope_changes_require_reapproval() -> None:
+    requirement_changed = _KEY_COVERAGE.replace("两个订单列表", "三个订单列表", 1)
+    test_case_changed = _KEY_COVERAGE.replace("TC-001、TC-002", "TC-001、TC-003")
+    criteria_changed = _KEY_COVERAGE.replace("均完整执行且 PASS", "均完整执行")
+
+    assert fingerprint_test_case_scope(_KEY_COVERAGE) != fingerprint_test_case_scope(
+        requirement_changed
+    )
+    assert fingerprint_test_case_scope(_KEY_COVERAGE) != fingerprint_test_case_scope(
+        test_case_changed
+    )
+    assert fingerprint_test_case_scope(_KEY_COVERAGE) != fingerprint_test_case_scope(
+        criteria_changed
+    )
+
+
+def test_key_coverage_execution_status_does_not_change_scope_fingerprint() -> None:
+    executed = _KEY_COVERAGE.replace("当前状态：未开始", "当前状态：已满足")
+
+    assert fingerprint_test_case_scope(_KEY_COVERAGE) == fingerprint_test_case_scope(executed)
+
+
+def test_parses_key_coverage_test_case_mapping() -> None:
+    constraints, issues = parse_key_coverage_constraints(_KEY_COVERAGE)
+
+    assert issues == []
+    assert constraints[0].id == "KC-001"
+    assert constraints[0].test_case_ids == ("TC-001", "TC-002")
 
 
 def test_status_and_result_changes_do_not_change_scope_fingerprint() -> None:

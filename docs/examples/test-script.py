@@ -3,10 +3,12 @@
 本文件是 `docs/examples/` 下的平铺示例，真实资产路径为
 `projects/<project-name>/systems/<system-name>/versions/<version-name>/test-scripts/contacts-add.py`。
 
-关联 Test Case：TC-001、TC-002（同属"联系人新增"测试组，复用同一测试组级会话）。
+覆盖用例：TC-001、TC-002（同属"联系人新增"测试组，复用同一测试组级会话）。
 前置条件：测试用例已批准；测试地址为已确认的测试环境；需要登录时由用户手动完成并确认。
 不在脚本、日志或产物中保存账号、密码、Token、Cookie 或 Storage State。
 运行命令：python -m pytest docs/examples/test-script.py -q。
+缺少数据时：记录为 BLOCKED，并在报告说明所缺的数据前置。
+结果判断：只有完整覆盖时才记录 PASS 或 FAIL；数据缺口不记录为业务 Bug。
 """
 
 from collections.abc import Iterator

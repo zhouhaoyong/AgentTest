@@ -1,0 +1,12 @@
+# .agentest/state.yaml
+#
+# 进度字段只表示阶段和执行记录，不表示测试授权仍然有效。
+phase: intake
+context_confirmed: false
+last_action: ""
+pending_questions: []
+completed_test_case_ids: []
+test_cases_fingerprint: ""
+# 只要 completed_test_case_ids 有内容，就必须同步记录对应结果。
+# 结果使用内部值；测试用例和报告继续使用 PASS / FAIL / BLOCKED / NOT RUN。
+test_case_results: {}

@@ -6,9 +6,9 @@
 
 ## 允许内容
 
-- `context.yaml`：当前 Project、System、Version、测试地址；多个系统一起测试时，联动关系记录在参与联动的 `version.yaml` 的 `linked` / `linked_ends` 轻量标记里。
+- `context.yaml`：当前 Project、System、Version、系统类型；测试地址以当前 Version 的 `version.yaml` 为唯一事实源，不在上下文中重复保存。多个系统一起测试时，联动关系记录在参与联动的 `version.yaml` 的 `linked` / `linked_ends` 轻量标记里。
 - `context.yaml` 中的 `system_type`：当前 System 类型，取值为 `web`、`h5`、`app` 或 `miniapp`。
-- `state.yaml`：当前工作阶段和浏览器偏好。
+- `state.yaml`：当前工作阶段和测试进度；有已完成用例时，还要记录对应的 `test_case_results` 内部结果值。
 - 本文件：目录契约。
 
 ## 文件职责

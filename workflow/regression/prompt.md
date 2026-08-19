@@ -18,12 +18,13 @@
 
 ## 决策与执行
 
-正式执行前先做本地环境 pre-flight 检查（操作系统、系统 Chrome、Playwright 可用性），并核对测试用例批准指纹（`.agentest/state.yaml` 的 `test_cases_fingerprint`）与当前 `test-cases.md` 一致；不一致时暂停并要求用户重新确认后再回归。
+正式执行前先执行正式测试启动闸门，再做本地环境 pre-flight 检查（操作系统、系统 Chrome、Playwright 可用性），并核对测试用例批准指纹（`.agentest/state.yaml` 的 `test_cases_fingerprint`）与当前 `test-cases.md` 一致；任一不一致时暂停并要求用户重新确认后再回归。
 
 1. 重新执行当前 Version 的完整测试用例集合，而非只执行原失败场景或推测的直接相关场景。
 2. 原 Bug 关联的 Test Case 必须存在于当前集合；若不存在，暂停并要求用户先更新测试用例。
 3. 脚本批量复用 / 调整、按模块 / 业务流程分组、同组复用同一隔离浏览器会话、运行时发现数据、数据缺口自愈与熔断上报、前后端归因、结果记录（`PASS`、`FAIL`、`BLOCKED`、`NOT RUN`）、重试与熔断阈值等执行细则统一遵循 [`testing/rules.md`](../testing/rules.md)；环境数据缺口记 `BLOCKED`、环境异常不能直接判定为 Bug。
 4. 单系统时仅在当前 Version 范围内回归；多端联动时只执行各参与端 `version.yaml` 的 `linked_ends` 所登记的 System 和 Version。不自动扩大到其他 Version 或 System。
+5. 交付回归报告前执行交付闸门；发现用例、进度、脚本、证据或报告不同说法时，先修正记录，不交付矛盾结论。
 
 ## 允许写入的位置
 

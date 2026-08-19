@@ -26,17 +26,12 @@ class WorkspaceContext(AssetModel):
     project_id: str
     system_id: str
     system_type: WorkspaceSystemType = ""
-    version_id: str = ""
+    version_id: str
 
-    @field_validator("project_id", "system_id")
+    @field_validator("project_id", "system_id", "version_id")
     @classmethod
     def validate_required_id(cls, value: str) -> str:
         return validate_asset_id(value)
-
-    @field_validator("version_id")
-    @classmethod
-    def validate_optional_id(cls, value: str) -> str:
-        return validate_asset_id(value) if value else value
 
 
 class WorkspaceState(AssetModel):
@@ -48,8 +43,7 @@ class WorkspaceState(AssetModel):
     completed_test_case_ids: list[str] = Field(default_factory=list)
     # 上次批准时测试用例范围的指纹；不包含执行状态、结果、说明、时间和证据。
     test_cases_fingerprint: str = ""
-    # 可选：逐用例执行判定（通过/失败/阻塞/未跑）。不写则退回仅用 completed 记进度，
-    # 保持既有断点续跑与指纹逻辑不变（向后兼容）。
+    # 测试尚未开始时可为空；只要 completed_test_case_ids 有内容，就必须逐用例记录结果。
     test_case_results: dict[str, TestCaseOutcome] = Field(default_factory=dict)
 
 

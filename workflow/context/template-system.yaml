@@ -1,6 +1,7 @@
 id: system-web
 name: 系统名称
 type: web
+# 兼容 / 历史信息；正式测试不得把它作为测试地址回退。
 base_url: ""
 description: ""
 test_environment:

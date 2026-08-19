@@ -7,23 +7,40 @@ from typing import Any
 
 import yaml
 
-from agentest.test_cases import scope_fingerprint_matches
+from agentest.test_cases import (
+    KeyCoverageConstraint,
+    parse_key_coverage_constraints,
+    scope_fingerprint_matches,
+)
 
 _TEST_CASE_HEADER = re.compile(r"^###\s+(TC-[0-9]+)\b", re.MULTILINE)
 _FIELD_NAMES = ("测试状态", "测试结果", "执行覆盖", "实际结果", "执行时间", "证据")
 _ALLOWED_STATUS = {"未测试", "已测试"}
 _ALLOWED_RESULTS = {"PASS", "FAIL", "BLOCKED", "NOT RUN"}
 _ALLOWED_COVERAGE = {"完整", "部分", "未执行"}
+_DISPLAY_TO_STATE_OUTCOME = {
+    ("完整", "PASS"): "passed",
+    ("完整", "FAIL"): "failed",
+    ("部分", "BLOCKED"): "blocked",
+    ("未执行", "BLOCKED"): "blocked",
+    ("未执行", "NOT RUN"): "not_run",
+}
 _MEMORY_HEADINGS = ("验证 Version", "长期用途", "稳定事实")
 _SENSITIVE_MEMORY_PATTERN = re.compile(
     r"(?i)(?:password|passwd|token|cookie|storage\s*state|密码|口令|验证码)"
 )
 _SCRIPT_METADATA_PATTERNS = {
-    "test_case": re.compile(r"\bTC-[0-9]+\b"),
     "prerequisite": re.compile(r"(?i)(?:前置条件|prerequisite)"),
     "manual_login": re.compile(r"(?i)(?:手动登录|manual\s+login)"),
     "run_command": re.compile(r"(?i)(?:运行(?:方式|命令)|python(?:\.exe)?\s+-m\s+pytest)"),
+    "missing_data_handling": re.compile(
+        r"(?i)(?:缺少数据时|数据缺口|数据前置结果|missing\s+data)"
+    ),
+    "result_judgment": re.compile(r"(?i)(?:结果判断|结果判定|测试结果)"),
 }
+_SCRIPT_COVERAGE_PATTERN = re.compile(
+    r"(?m)^[ \t]*(?:#[ \t]*)?覆盖用例[ \t]*[:：][ \t]*(.+)$"
+)
 _NO_EVIDENCE = {"", "无", "未执行", "未生成", "无证据"}
 # 报告结果表按表头名称解析，不依赖固定列顺序；模板调整列时校验仍然有效。
 _REPORT_COLUMNS = {
@@ -32,7 +49,14 @@ _REPORT_COLUMNS = {
     "coverage": "执行覆盖",
     "result": "本次结果",
 }
+_KEY_COVERAGE_REPORT_COLUMNS = {
+    "id": "约束",
+    "test_cases": "承接用例",
+    "status": "状态",
+    "note": "说明",
+}
 _TEST_CASE_ID_PATTERN = re.compile(r"^TC-[0-9]+$")
+_TEST_CASE_REFERENCE_PATTERN = re.compile(r"\bTC-[0-9]+\b")
 # 定位质量校验（W1-3）：高精度识别占位 / 弱定位，避免误伤合法的中文 role/text 定位。
 _CJK_PATTERN = re.compile(r"[一-鿿]")
 # 模糊属性匹配：[class*=、[attr^=、[data-x$= 等；不误伤 [aria-label=（无 *^$~ 通配）。
@@ -472,9 +496,22 @@ def audit_version_assets(
     test_case_blocks = _parse_test_cases(test_case_content)
     test_case_ids = set(test_case_blocks)
     _check_duplicate_ids(version_root, test_case_content, issues)
+    key_coverage_constraints = _check_key_coverage_constraints(
+        version_root,
+        test_case_content,
+        test_case_ids,
+        issues,
+    )
     for test_case_id, block in test_case_blocks.items():
         _check_test_case_fields(version_root, test_case_id, block, issues)
+    _check_key_coverage_current_status(
+        version_root,
+        key_coverage_constraints,
+        test_case_blocks,
+        issues,
+    )
 
+    script_cases: dict[str, set[str]] = {}
     if require_execution_assets:
         scripts_dir = version_root / "test-scripts"
         _check_file(
@@ -499,7 +536,7 @@ def audit_version_assets(
                 )
             )
         else:
-            _check_test_scripts(version_root, scripts_dir, issues)
+            script_cases = _check_test_scripts(version_root, scripts_dir, test_case_ids, issues)
 
         report_dir = version_root / "report"
         report_file = report_dir / "report.md"
@@ -507,7 +544,34 @@ def audit_version_assets(
         _check_file(version_root, report_file, "missing_report", issues)
         if report_file.is_file():
             report_content = _read_text(report_file)
-            _check_report(version_root, report_content, test_case_ids, issues)
+            key_coverage_statuses = _key_coverage_statuses(
+                key_coverage_constraints,
+                test_case_blocks,
+            )
+            _check_report_conclusion(
+                version_root,
+                report_content,
+                key_coverage_statuses,
+                issues,
+            )
+            _check_report(
+                version_root,
+                report_content,
+                test_case_ids,
+                script_cases,
+                key_coverage_constraints,
+                key_coverage_statuses,
+                issues,
+            )
+
+        evidence_dir = version_root / "evidence"
+        if evidence_dir.is_dir():
+            _check_file(
+                version_root,
+                evidence_dir / "requirement.md",
+                "missing_evidence_contract",
+                issues,
+            )
 
     if state_path is not None and state_path.is_file():
         _check_state(version_root, test_case_content, test_case_ids, state_path, issues)
@@ -518,8 +582,12 @@ def audit_version_assets(
 def _check_test_scripts(
     version_root: Path,
     scripts_dir: Path,
+    test_case_ids: set[str],
     issues: list[AssetAuditIssue],
-) -> None:
+) -> dict[str, set[str]]:
+    """Validate script metadata and return each script's declared Test Case IDs."""
+
+    script_cases: dict[str, set[str]] = {}
     for script_path in sorted(scripts_dir.glob("*.py")):
         content = _read_text(script_path)
         missing = [
@@ -536,6 +604,138 @@ def _check_test_scripts(
                     f"测试脚本缺少元数据：{', '.join(missing)}",
                 )
             )
+        coverage_match = _SCRIPT_COVERAGE_PATTERN.search(content)
+        if coverage_match is None:
+            issues.append(
+                _issue(
+                    "missing_script_test_case_declaration",
+                    version_root,
+                    script_path,
+                    "测试脚本必须用“覆盖用例：TC-xxx”声明承接的测试用例",
+                )
+            )
+            continue
+        declared_ids = set(_TEST_CASE_REFERENCE_PATTERN.findall(coverage_match.group(1).strip()))
+        if not declared_ids:
+            issues.append(
+                _issue(
+                    "invalid_script_test_case_declaration",
+                    version_root,
+                    script_path,
+                    "测试脚本的覆盖用例必须包含至少一个 TC-xxx",
+                )
+            )
+            continue
+        script_cases[script_path.name] = declared_ids
+        unknown_ids = declared_ids - test_case_ids
+        if unknown_ids:
+            issues.append(
+                _issue(
+                    "script_test_case_out_of_scope",
+                    version_root,
+                    script_path,
+                    f"测试脚本声明了当前范围外的测试用例：{', '.join(sorted(unknown_ids))}",
+                )
+            )
+    return script_cases
+
+
+def _check_report_conclusion(
+    version_root: Path,
+    content: str,
+    key_coverage_statuses: dict[str, str],
+    issues: list[AssetAuditIssue],
+) -> None:
+    """Require a user-facing conclusion before the detailed report tables."""
+
+    report_file = version_root / "report" / "report.md"
+    summary_start = content.find("## 1. 结论摘要")
+    details_start = content.find("## 2. ")
+    if summary_start < 0 or (details_start >= 0 and summary_start > details_start):
+        issues.append(
+            _issue(
+                "missing_report_conclusion",
+                version_root,
+                report_file,
+                "报告必须在详细内容前提供结论摘要",
+            )
+        )
+        return
+
+    summary_end = details_start if details_start >= 0 else len(content)
+    summary = content[summary_start:summary_end]
+    required_lines = ("一句话结论：", "是否可宣称通过：", "汇总速览：")
+    summary_counts_match = re.search(
+        r"汇总速览：.*通过\s*(\d+).*失败\s*(\d+).*阻塞\s*(\d+).*未运行\s*(\d+).*"
+        r"(?:总|总计)\s*(\d+)",
+        summary,
+        re.DOTALL,
+    )
+    claim_match = re.search(
+        r"^\s*-\s*是否可宣称通过\s*[:：]\s*(是|否)(?:\s|$|[（(])",
+        summary,
+        re.MULTILINE,
+    )
+    if (
+        any(line not in summary for line in required_lines)
+        or summary_counts_match is None
+        or claim_match is None
+    ):
+        issues.append(
+            _issue(
+                "missing_report_conclusion",
+                version_root,
+                report_file,
+                "报告结论摘要缺少一句话结论、合法通过判断或完整结果速览",
+            )
+        )
+        return
+
+    pass_count, fail_count, blocked_count, not_run_count, total_count = (
+        int(value) for value in summary_counts_match.groups()
+    )
+    detail_counts = {
+        "total": _summary_value(content, "本次测试用例总数"),
+        "PASS": _summary_value(content, "PASS"),
+        "FAIL": _summary_value(content, "FAIL"),
+        "BLOCKED": _summary_value(content, "BLOCKED"),
+        "NOT RUN": _summary_value(content, "NOT RUN"),
+    }
+    if all(value is not None for value in detail_counts.values()):
+        top_counts = {
+            "total": total_count,
+            "PASS": pass_count,
+            "FAIL": fail_count,
+            "BLOCKED": blocked_count,
+            "NOT RUN": not_run_count,
+        }
+        if (
+            top_counts != detail_counts
+            or total_count != pass_count + fail_count + blocked_count + not_run_count
+        ):
+            issues.append(
+                _issue(
+                    "report_conclusion_summary_mismatch",
+                    version_root,
+                    report_file,
+                    "报告顶部汇总与详细结果汇总不一致",
+                )
+            )
+    if claim_match.group(1) == "是" and (
+        fail_count > 0
+        or blocked_count > 0
+        or not_run_count > 0
+        or total_count == 0
+        or any(status != "已满足" for status in key_coverage_statuses.values())
+    ):
+        issues.append(
+            _issue(
+                "inconsistent_report_conclusion",
+                version_root,
+                report_file,
+                "报告存在失败、阻塞、未运行、未满足关键要求或零用例时，不能宣称通过",
+            )
+        )
 
 
 def _parse_test_cases(content: str) -> dict[str, str]:
@@ -545,6 +745,101 @@ def _parse_test_cases(content: str) -> dict[str, str]:
         end = matches[index + 1].start() if index + 1 < len(matches) else len(content)
         blocks[match.group(1)] = content[match.start() : end]
     return blocks
+
+
+def _check_key_coverage_constraints(
+    version_root: Path,
+    content: str,
+    test_case_ids: set[str],
+    issues: list[AssetAuditIssue],
+) -> list[KeyCoverageConstraint]:
+    """Require every declared user constraint to map to the current test scope."""
+
+    constraints, parse_issues = parse_key_coverage_constraints(content)
+    test_cases_path = version_root / "test-cases" / "test-cases.md"
+    for parse_issue in parse_issues:
+        issues.append(
+            _issue(
+                parse_issue.code,
+                version_root,
+                test_cases_path,
+                parse_issue.message,
+            )
+        )
+    for constraint in constraints:
+        unknown_ids = set(constraint.test_case_ids) - test_case_ids
+        if unknown_ids:
+            issues.append(
+                _issue(
+                    "key_coverage_test_case_out_of_scope",
+                    version_root,
+                    test_cases_path,
+                    f"{constraint.id} 的承接用例不在当前测试范围：{', '.join(sorted(unknown_ids))}",
+                )
+            )
+    return constraints
+
+
+def _key_coverage_statuses(
+    constraints: list[KeyCoverageConstraint],
+    test_case_blocks: dict[str, str],
+) -> dict[str, str]:
+    """Derive delivery status from the Test Case facts, never from prose alone."""
+
+    statuses: dict[str, str] = {}
+    for constraint in constraints:
+        outcomes = [
+            _DISPLAY_TO_STATE_OUTCOME.get(
+                (
+                    _field_value(test_case_blocks.get(test_case_id, ""), "执行覆盖"),
+                    _field_value(test_case_blocks.get(test_case_id, ""), "测试结果"),
+                )
+            )
+            for test_case_id in constraint.test_case_ids
+        ]
+        if outcomes and all(outcome == "passed" for outcome in outcomes):
+            statuses[constraint.id] = "已满足"
+        elif any(outcome == "failed" for outcome in outcomes):
+            statuses[constraint.id] = "未满足"
+        else:
+            statuses[constraint.id] = "部分阻塞"
+    return statuses
+
+
+def _check_key_coverage_current_status(
+    version_root: Path,
+    constraints: list[KeyCoverageConstraint],
+    test_case_blocks: dict[str, str],
+    issues: list[AssetAuditIssue],
+) -> None:
+    """Ensure an execution-derived key-coverage status is reflected in the test cases."""
+
+    test_cases_path = version_root / "test-cases" / "test-cases.md"
+    for constraint in constraints:
+        outcomes = [
+            _DISPLAY_TO_STATE_OUTCOME.get(
+                (
+                    _field_value(test_case_blocks.get(test_case_id, ""), "执行覆盖"),
+                    _field_value(test_case_blocks.get(test_case_id, ""), "测试结果"),
+                )
+            )
+            for test_case_id in constraint.test_case_ids
+        ]
+        observed_outcomes = [outcome for outcome in outcomes if outcome is not None]
+        if not observed_outcomes or all(outcome == "not_run" for outcome in observed_outcomes):
+            continue
+        expected_status = _key_coverage_statuses(constraints, test_case_blocks).get(
+            constraint.id
+        )
+        if expected_status is not None and constraint.current_status != expected_status:
+            issues.append(
+                _issue(
+                    "key_coverage_current_status_mismatch",
+                    version_root,
+                    test_cases_path,
+                    f"{constraint.id} 的当前状态与承接用例执行结果不一致",
+                )
+            )
 
 
 def _check_test_case_fields(
@@ -598,8 +893,12 @@ def _check_test_case_fields(
         )
     elif coverage and (
         (result in {"PASS", "FAIL"} and (coverage != "完整" or status != "已测试"))
+        or (coverage == "完整" and result not in {"PASS", "FAIL"})
         or (coverage == "部分" and result != "BLOCKED")
-        or (coverage == "未执行" and result not in {"BLOCKED", "NOT RUN"})
+        or (
+            coverage == "未执行"
+            and (result not in {"BLOCKED", "NOT RUN"} or status != "未测试")
+        )
     ):
         issues.append(
             _issue(
@@ -627,6 +926,9 @@ def _check_report(
     version_root: Path,
     content: str,
     test_case_ids: set[str],
+    script_cases: dict[str, set[str]],
+    key_coverage_constraints: list[KeyCoverageConstraint],
+    key_coverage_statuses: dict[str, str],
     issues: list[AssetAuditIssue],
 ) -> None:
     report_file = version_root / "report" / "report.md"
@@ -679,19 +981,37 @@ def _check_report(
                 )
             )
 
-    for _test_case_id, script_reference, _coverage, _result in rows:
+    for test_case_id, script_reference, _coverage, _result in rows:
         script_reference = script_reference.strip().strip("`")
-        if script_reference and script_reference not in {"无", "-"}:
-            script_path = version_root / "test-scripts" / Path(script_reference).name
-            if not script_path.is_file():
-                issues.append(
-                    _issue(
-                        "missing_referenced_asset",
-                        version_root,
-                        report_file,
-                        f"报告引用的脚本不存在：{script_reference}",
-                    )
+        if not script_reference or script_reference in {"无", "-"}:
+            issues.append(
+                _issue(
+                    "missing_report_test_case_script",
+                    version_root,
+                    report_file,
+                    f"{test_case_id} 未关联可复跑测试脚本",
                 )
+            )
+            continue
+        script_path = version_root / "test-scripts" / Path(script_reference).name
+        if not script_path.is_file():
+            issues.append(
+                _issue(
+                    "missing_referenced_asset",
+                    version_root,
+                    report_file,
+                    f"报告引用的脚本不存在：{script_reference}",
+                )
+            )
+        elif test_case_id not in script_cases.get(script_path.name, set()):
+            issues.append(
+                _issue(
+                    "report_script_test_case_mismatch",
+                    version_root,
+                    report_file,
+                    f"{test_case_id} 的报告脚本未声明覆盖该测试用例：{script_reference}",
+                )
+            )
     # Re-read the Version test-case file so the report cannot silently change result semantics.
     test_cases_file = version_root / "test-cases" / "test-cases.md"
     test_case_blocks = _parse_test_cases(
@@ -721,6 +1041,14 @@ def _check_report(
                 )
             )
 
+    _check_key_coverage_report(
+        version_root,
+        content,
+        key_coverage_constraints,
+        key_coverage_statuses,
+        issues,
+    )
+
     # 允许文件名含空格：只在 Markdown 链接右括号 / 表格竖线 / 反引号 / 换行处截断，
     # 不再遇到空格就切断，避免把 "evidence/我的 证据.png" 误判成坏路径。
     for reference in re.findall(r"(?:evidence|test-scripts)/[^)`|\n]+", content):
@@ -734,6 +1062,98 @@ def _check_report(
                     f"报告引用的资产不存在：{reference}",
                 )
             )
+
+
+def _check_key_coverage_report(
+    version_root: Path,
+    content: str,
+    constraints: list[KeyCoverageConstraint],
+    statuses: dict[str, str],
+    issues: list[AssetAuditIssue],
+) -> None:
+    """Ensure the report visibly accounts for every user-required constraint."""
+
+    if not constraints:
+        return
+    report_file = version_root / "report" / "report.md"
+    rows, missing_columns = _parse_key_coverage_report_rows(content)
+    if missing_columns:
+        labels = "、".join(
+            _KEY_COVERAGE_REPORT_COLUMNS[key] for key in sorted(missing_columns)
+        )
+        issues.append(
+            _issue(
+                "missing_key_coverage_report",
+                version_root,
+                report_file,
+                f"报告缺少关键覆盖约束完成表或列：{labels}",
+            )
+        )
+        return
+
+    expected = {
+        constraint.id: (tuple(sorted(constraint.test_case_ids)), statuses[constraint.id])
+        for constraint in constraints
+    }
+    actual = {
+        constraint_id: (test_case_ids, status)
+        for constraint_id, test_case_ids, status in rows
+    }
+    if actual != expected:
+        issues.append(
+            _issue(
+                "key_coverage_report_mismatch",
+                version_root,
+                report_file,
+                "报告中的关键覆盖约束、承接用例或完成状态与测试用例执行结果不一致",
+            )
+        )
+
+
+def _parse_key_coverage_report_rows(
+    content: str,
+) -> tuple[list[tuple[str, tuple[str, ...], str]], set[str]]:
+    """Parse the key coverage table by header names, independent of column order."""
+
+    lines = content.splitlines()
+    header_index = -1
+    header_cells: list[str] = []
+    for index, line in enumerate(lines):
+        cells = _split_table_row(line)
+        if cells and all(label in cells for label in _KEY_COVERAGE_REPORT_COLUMNS.values()):
+            header_index = index
+            header_cells = cells
+            break
+    if header_index < 0:
+        return [], set(_KEY_COVERAGE_REPORT_COLUMNS)
+
+    column_index = {
+        key: header_cells.index(label) for key, label in _KEY_COVERAGE_REPORT_COLUMNS.items()
+    }
+    rows: list[tuple[str, tuple[str, ...], str]] = []
+    for line in lines[header_index + 1 :]:
+        cells = _split_table_row(line)
+        if not cells:
+            if rows:
+                break
+            continue
+        if all(re.fullmatch(r":?-{3,}:?", cell.strip()) for cell in cells):
+            continue
+        if len(cells) < len(header_cells):
+            continue
+        constraint_id = cells[column_index["id"]].strip()
+        test_case_ids = tuple(
+            sorted(
+                set(
+                    _TEST_CASE_REFERENCE_PATTERN.findall(
+                        cells[column_index["test_cases"]].strip()
+                    )
+                )
+            )
+        )
+        status = cells[column_index["status"]].strip()
+        rows.append((constraint_id, test_case_ids, status))
+    return rows, set()
 
 
 def _check_state(
@@ -783,6 +1203,13 @@ def _check_state(
         )
 
     _check_test_case_results(version_root, test_case_ids, completed, raw, state_path, issues)
+    _check_state_matches_test_cases(
+        version_root,
+        _parse_test_cases(test_case_content),
+        raw.get("test_case_results"),
+        state_path,
+        issues,
+    )
 
 
 # 逐用例结果的终态取值（与 schemas.workspace.TestCaseOutcome 对齐）。
@@ -798,9 +1225,18 @@ def _check_test_case_results(
     state_path: Path,
     issues: list[AssetAuditIssue],
 ) -> None:
-    """可选字段 test_case_results 的一致性校验（不写不报错，向后兼容）。"""
+    """校验 test_case_results 与 completed_test_case_ids 的执行语义一致。"""
     results = raw.get("test_case_results")
     if results is None:
+        if isinstance(completed, list) and completed:
+            issues.append(
+                _issue(
+                    "missing_test_case_results",
+                    version_root,
+                    state_path,
+                    "state.yaml 有已完成用例时必须同步记录 test_case_results",
+                )
+            )
         return
     if not isinstance(results, dict):
         issues.append(
@@ -837,6 +1273,18 @@ def _check_test_case_results(
 
     completed_set = set(completed) if isinstance(completed, list) else set()
 
+    # 每个已出结论的用例都必须有对应结果，不能只靠 completed 记录进度。
+    missing_completed_results = completed_set - set(results)
+    if missing_completed_results:
+        issues.append(
+            _issue(
+                "missing_test_case_results",
+                version_root,
+                state_path,
+                "completed_test_case_ids 中的用例缺少对应 test_case_results",
+            )
+        )
+
     # completed 里的 id 若出现在 results，其结果必须是终态之一（不能还是 not_run）。
     if any(results.get(cid) == "not_run" for cid in completed_set if cid in results):
         issues.append(
@@ -848,7 +1296,7 @@ def _check_test_case_results(
             )
         )
 
-    # 判 passed 的用例，其 id 应已在 completed（出过结论才谈得上通过）。
+    # 所有终态结果都必须对应 completed（出过结论才谈得上通过/失败/阻塞）。
     if any(
         outcome == "passed" and cid not in completed_set
         for cid, outcome in results.items()
@@ -861,6 +1309,47 @@ def _check_test_case_results(
                 "test_case_results 判 passed 的用例未记入 completed_test_case_ids",
             )
         )
+    if any(
+        outcome in {"failed", "blocked"} and cid not in completed_set
+        for cid, outcome in results.items()
+    ):
+        issues.append(
+            _issue(
+                "terminal_result_not_completed",
+                version_root,
+                state_path,
+                "failed/blocked 结果的用例未记入 completed_test_case_ids",
+            )
+        )
+
+
+def _check_state_matches_test_cases(
+    version_root: Path,
+    test_case_blocks: dict[str, str],
+    results: Any,
+    state_path: Path,
+    issues: list[AssetAuditIssue],
+) -> None:
+    """Require machine state to agree with the human-facing Test Case result."""
+
+    if not isinstance(results, dict):
+        return
+    for test_case_id, block in test_case_blocks.items():
+        actual = results.get(test_case_id)
+        if actual not in _VALID_OUTCOMES:
+            continue
+        expected = _DISPLAY_TO_STATE_OUTCOME.get(
+            (_field_value(block, "执行覆盖"), _field_value(block, "测试结果"))
+        )
+        if expected is not None and actual != expected:
+            issues.append(
+                _issue(
+                    "test_case_state_result_mismatch",
+                    version_root,
+                    state_path,
+                    f"{test_case_id} 的 state.yaml 结果与测试用例执行覆盖/结果不一致",
+                )
+            )
 
 
 def _field_value(block: str, field: str) -> str:
