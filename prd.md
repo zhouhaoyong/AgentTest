@@ -27,6 +27,8 @@ AgentTest 是面向现成 AI Agent 的轻量文件化 Web 测试工作区。它�
 - System 类型：`web`、`h5`、`app`、`miniapp`。
 - System / Version 的 Playwright 测试环境配置，包括视口、设备、语言、时区和超时。
 - Python Playwright 薄封装：统一用 Playwright 驱动系统 Chrome 的隔离（无痕）会话执行所有业务测试。
+- 只读资产审计与工作流闸门：Version 资产结构一致性审计（`asset_audit.py`）、批准范围指纹与关键覆盖约束解析（`test_cases.py`），以及测试用例确认 / 正式测试启动 / 报告交付三道只读闸门（`workflow_gates.py`）；只报告问题、不改动资产。
+- 探索期纯逻辑工具：探索预算硬熔断、定位稳定性打分、单会话批量发现与会话协调（`exploration/`），可脱离真实浏览器单测。
 - `workflow/` 公共脚手架：按用户流程聚合的 Prompt、模板、目录契约、规则和资产映射。
 - Markdown / YAML 模板、目录契约、README、工作流和测试规则。
 - `.agentest/context.yaml` 与 `.agentest/state.yaml` 的跨 Agent 状态约定，由 Agent 直接读写。
@@ -83,9 +85,20 @@ AgentTest/
 │   └── examples/
 ├── src/agentest/
 │   ├── __init__.py
+│   ├── asset_audit.py
+│   ├── test_cases.py
+│   ├── workflow_gates.py
 │   ├── browser/
 │   │   ├── __init__.py
 │   │   ├── requirement.md
+│   │   ├── preflight.py
+│   │   └── session.py
+│   ├── exploration/
+│   │   ├── __init__.py
+│   │   ├── requirement.md
+│   │   ├── budget.py
+│   │   ├── discovery.py
+│   │   ├── scoring.py
 │   │   └── session.py
 │   └── schemas/
 │       ├── __init__.py

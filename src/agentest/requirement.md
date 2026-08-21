@@ -6,10 +6,12 @@
 
 ## 允许内容
 
-- `browser/`：Playwright 兜底能力。
+- `browser/`：Playwright 驱动的隔离 Chrome 会话与启动前 pre-flight。
 - `schemas/`：Pydantic 资产 Schema。
-- `test_cases.py`：测试用例范围指纹辅助能力。
+- `exploration/`：探索期纯逻辑工具（预算熔断、定位打分、单会话发现）。
+- `test_cases.py`：测试用例范围指纹与关键覆盖约束解析。
 - `asset_audit.py`：Version 资产的只读结构一致性审计。
+- `workflow_gates.py`：测试用例确认 / 正式测试启动 / 报告交付三道只读闸门。
 - `__init__.py`：包元数据。
 - 本文件：目录契约。
 

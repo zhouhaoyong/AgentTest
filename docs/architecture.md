@@ -7,7 +7,7 @@ AGENTS.md + 最近的 requirement.md
   ↓
 Project / System / Version Markdown 和 YAML 资产
   ↓
-Agent 内置浏览器或 Python Playwright 兜底能力
+Python Playwright 驱动的隔离 Chrome 会话（系统 Google Chrome 无痕）
   ↓
 目标 Web 系统
 
@@ -19,7 +19,11 @@ AgentTest v0.1 使用本地 Markdown / YAML 文件作为事实来源。Git 可�
 
 ## 代码分区
 
-- `schemas/`：校验 Project、System、Version YAML。
-- `browser/`：按 System / Version 测试环境启动默认 headed 的 Playwright 会话。
+- `schemas/`：校验 Project、System、Version 及跨 Agent 上下文 YAML。
+- `browser/`：按 System / Version 测试环境启动默认 headed 的隔离 Chrome 会话（`session.py`），并在启动前做本地环境 pre-flight（`preflight.py`）。
+- `exploration/`：探索期纯逻辑工具——预算硬熔断、定位稳定性打分、单会话批量发现与会话协调，可脱离真实浏览器单测。
+- `test_cases.py`：批准范围指纹与关键覆盖约束解析。
+- `asset_audit.py`：Version 资产的只读结构一致性审计。
+- `workflow_gates.py`：测试用例确认 / 正式测试启动 / 报告交付三道只读闸门。
 
 Agent 负责需求理解、系统探索、测试用例生成、人工审核、正式测试以及长期资产更新。

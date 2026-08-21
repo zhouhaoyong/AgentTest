@@ -1,5 +1,7 @@
 # 运行环境与工作流可靠性改造实施计划
 
+> **历史归档:** 本文档记录早期设计构想。其中浏览器后端的"内置优先、Playwright 兜底"两级方案及相关过时技术概念,已被后续决策取代——当前统一为"仅使用一种隔离无痕 Chrome 会话,无两级回退"。本文件仅作演进记录保留,不代表现状;现状以顶层规则与产品需求文档为准。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 将运行环境、浏览器兜底、跨 Agent 状态和多 System 联动范围的可靠性收敛到已确认的规则。

@@ -1,5 +1,7 @@
 # 需求入口与浏览器安全流程加固实施计划
 
+> **历史归档:** 本文档记录早期设计构想。其中浏览器后端的"内置优先、Playwright 兜底"两级方案及相关过时技术概念,已被后续决策取代——当前统一为"仅使用一种隔离无痕 Chrome 会话,无两级回退"。本文件仅作演进记录保留,不代表现状;现状以顶层规则与产品需求文档为准。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans (recommended) to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** 让 Agent 在第一轮同时完成上下文确认、需求质疑和测试前置条件收集，并在任何页面操作前选择隔离浏览器，避免复用用户已有登录态，同时收紧上下文状态和资产写入边界。
